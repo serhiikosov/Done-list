@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, X, Settings, Sun, Moon } from "lucide-react";
+import { Search, X, Settings, Sun, Moon, Plus, Check } from "lucide-react";
 import type { Grouping } from "./types";
 import { useEntries, type NewEntryInput } from "./hooks/useEntries";
 import { useSync } from "./hooks/useSync";
@@ -18,7 +18,8 @@ import {
   differenceInCalendarDays,
 } from "date-fns";
 import { Sidebar, type View } from "./components/Sidebar";
-import { QuickAdd } from "./components/QuickAdd";
+import { Composer } from "./components/Composer";
+import { BottomBar } from "./components/BottomBar";
 import { Timeline } from "./components/Timeline";
 import { StandupPanel } from "./components/StandupPanel";
 
@@ -34,8 +35,8 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
 
-  const addRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────
@@ -45,9 +46,9 @@ export default function App() {
       const typing =
         target.tagName === "INPUT" || target.tagName === "TEXTAREA";
 
-      if ((e.key === "/" || ((e.metaKey || e.ctrlKey) && e.key === "k")) && !typing) {
+      if ((e.key === "/" || e.key === "n" || ((e.metaKey || e.ctrlKey) && e.key === "k")) && !typing) {
         e.preventDefault();
-        addRef.current?.focus();
+        setComposerOpen(true);
       } else if (e.key === "f" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -156,6 +157,13 @@ export default function App() {
       ? "No entries match your search."
       : "Press / to log the first thing you did today.";
 
+  const groupings: GroupingOption[] = [
+    { id: "day", label: "Day" },
+    { id: "week", label: "Week" },
+    { id: "month", label: "Month" },
+    { id: "year", label: "Year" },
+  ];
+
   return (
     <div className="flex h-screen overflow-hidden">
       <div className="hidden md:flex">
@@ -178,106 +186,143 @@ export default function App() {
       </div>
 
       {/* Main column */}
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="relative flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
         <header
-          className="flex items-center gap-3 border-b px-4 py-3 md:px-8"
-          style={{ background: "color-mix(in srgb, var(--bg) 80%, transparent)" }}
+          className="pt-safe sticky top-0 z-20 flex items-center gap-3 px-5 py-3 md:border-b md:px-8"
+          style={{
+            background: "color-mix(in srgb, var(--bg) 82%, transparent)",
+            backdropFilter: "blur(12px)",
+          }}
         >
-          <h1 className="text-sm font-semibold tracking-tight md:hidden">Done</h1>
+          {/* Mobile brand */}
+          <div className="flex items-center gap-2 md:hidden">
+            <span
+              className="grid h-7 w-7 place-items-center rounded-lg text-[var(--accent-fg)]"
+              style={{ background: "var(--accent)" }}
+            >
+              <Check size={15} strokeWidth={3} />
+            </span>
+            <span className="text-[15px] font-semibold tracking-tight">Done</span>
+          </div>
 
-          {/* Mobile view switch */}
-          <div className="ml-auto flex gap-1 md:hidden">
-            {(["standup", "timeline"] as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className="ring-focus rounded-md px-2.5 py-1 text-xs font-medium capitalize"
-                style={{
-                  background: view === v ? "var(--accent-soft)" : "transparent",
-                  color: view === v ? "var(--accent)" : "var(--text-muted)",
-                }}
-              >
-                {v}
-              </button>
-            ))}
+          {/* Desktop: search + New */}
+          <div className="ml-auto hidden items-center gap-2 md:flex">
+            <div className="relative flex items-center" style={{ width: 260 }}>
+              <Search size={15} className="absolute left-2.5 text-faint" />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="ring-focus w-full rounded-lg py-1.5 pl-8 pr-7 text-sm placeholder:text-[var(--text-faint)] focus:outline-none"
+                style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="ring-focus absolute right-2 text-faint hover:text-[var(--text)]"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setComposerOpen(true)}
+              className="ring-focus tap inline-flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-medium text-[var(--accent-fg)]"
+              style={{ background: "var(--accent)" }}
+            >
+              <Plus size={16} strokeWidth={2.6} /> New
+            </button>
           </div>
 
           {/* Mobile theme + settings */}
-          <div className="flex items-center gap-0.5 md:hidden">
+          <div className="ml-auto flex items-center gap-0.5 md:hidden">
             <button
               onClick={toggle}
               aria-label="Toggle theme"
-              className="ring-focus grid h-8 w-8 place-items-center rounded-lg text-muted"
+              className="ring-focus tap grid h-9 w-9 place-items-center rounded-full text-muted"
             >
-              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
               aria-label="Sync & settings"
-              className="ring-focus relative grid h-8 w-8 place-items-center rounded-lg text-muted"
+              className="ring-focus tap relative grid h-9 w-9 place-items-center rounded-full text-muted"
             >
-              <Settings size={16} />
-              {sync.status === "synced" && (
+              <Settings size={17} />
+              {sync.status !== "disabled" && (
                 <span
-                  className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
-                  style={{ background: "var(--done)" }}
+                  className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
+                  style={{ background: sync.status === "synced" ? "var(--done)" : "var(--planned)" }}
                 />
               )}
             </button>
-          </div>
-
-          {/* Search */}
-          <div
-            className="relative ml-auto hidden items-center md:flex"
-            style={{ width: 280 }}
-          >
-            <Search size={15} className="absolute left-2.5 text-faint" />
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search…"
-              className="ring-focus w-full rounded-lg py-1.5 pl-8 pr-7 text-sm placeholder:text-[var(--text-faint)] focus:outline-none"
-              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="ring-focus absolute right-2 text-faint hover:text-[var(--text)]"
-                aria-label="Clear search"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
         </header>
 
         {/* Scroll area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-6">
-            <QuickAdd onAdd={handleAdd} recentTags={recentTags} />
+          <div className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5 md:px-6 md:pb-12">
+            {view === "standup" ? (
+              <StandupPanel
+                entries={entries}
+                onToggle={toggleStatus}
+                onCapture={() => setComposerOpen(true)}
+              />
+            ) : (
+              <div className="animate-in">
+                {/* Timeline hero */}
+                <div className="mb-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
+                    Timeline
+                  </div>
+                  <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight">
+                    {groupings.find((g) => g.id === grouping)?.label} view
+                  </h1>
+                  <p className="mt-1 text-sm text-muted">
+                    Everything you've shipped and planned.
+                  </p>
+                </div>
 
-            {(activeTag || query) && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-                <span>Filtered by</span>
-                {activeTag && (
-                  <button
-                    onClick={() => setActiveTag(null)}
-                    className="ring-focus inline-flex items-center gap-1 rounded-md px-2 py-0.5"
-                    style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                  >
-                    #{activeTag} <X size={11} />
-                  </button>
+                {/* Grouping selector (mobile — desktop uses the sidebar) */}
+                <div
+                  className="mb-5 flex gap-0.5 rounded-xl p-0.5 md:hidden"
+                  style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+                >
+                  {groupings.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => setGrouping(g.id)}
+                      className="ring-focus tap flex-1 rounded-lg py-1.5 text-[13px] font-medium"
+                      style={{
+                        background: grouping === g.id ? "var(--bg-elevated)" : "transparent",
+                        color: grouping === g.id ? "var(--text)" : "var(--text-muted)",
+                        boxShadow: grouping === g.id ? "var(--shadow)" : "none",
+                      }}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+
+                {(activeTag || query) && (
+                  <div className="mb-4 flex items-center gap-2 text-xs text-muted">
+                    <span>Filtered by</span>
+                    {activeTag && (
+                      <button
+                        onClick={() => setActiveTag(null)}
+                        className="ring-focus inline-flex items-center gap-1 rounded-md px-2 py-0.5"
+                        style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                      >
+                        #{activeTag} <X size={11} />
+                      </button>
+                    )}
+                    {query && <span className="italic">"{query}"</span>}
+                  </div>
                 )}
-                {query && <span className="italic">"{query}"</span>}
-              </div>
-            )}
 
-            <div className="mt-6">
-              {view === "standup" ? (
-                <StandupPanel entries={entries} onToggle={toggleStatus} />
-              ) : (
                 <Timeline
                   entries={filtered}
                   grouping={grouping}
@@ -287,18 +332,27 @@ export default function App() {
                   onTagClick={(t) => setActiveTag(t)}
                   emptyHint={emptyHint}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Mobile bottom navigation + capture */}
+        <BottomBar view={view} setView={setView} onCapture={() => setComposerOpen(true)} />
       </main>
 
+      <Composer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onAdd={handleAdd}
+        recentTags={recentTags}
+      />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} sync={sync} />
 
       {/* Toast */}
       {toast && (
         <div
-          className="animate-rise surface fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-sm"
+          className="animate-rise surface fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm md:bottom-6"
           style={{ boxShadow: "var(--shadow)" }}
         >
           {toast}
@@ -306,4 +360,9 @@ export default function App() {
       )}
     </div>
   );
+}
+
+interface GroupingOption {
+  id: Grouping;
+  label: string;
 }
