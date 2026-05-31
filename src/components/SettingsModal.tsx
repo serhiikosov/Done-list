@@ -46,7 +46,16 @@ export function SettingsModal({ open, onClose, sync }: Props) {
   if (!open) return null;
 
   const connect = () => {
-    sync.configure({ url: url.trim().replace(/\/$/, ""), anonKey: anonKey.trim() });
+    // Strip anything that isn't printable ASCII — guards against a stray "…"
+    // from a copied/truncated key, stray spaces, or newlines (which otherwise
+    // crash fetch with a non-ISO-8859-1 header error).
+    const cleanKey = anonKey.replace(/[^\x21-\x7E]/g, "");
+    const cleanUrl = url.trim().replace(/[^\x21-\x7E]/g, "").replace(/\/$/, "");
+    if (cleanKey.includes("…") || anonKey.includes("…")) {
+      setNotice("That key looks truncated (contains “…”). Use the copy button in Supabase to get the full key.");
+      return;
+    }
+    sync.configure({ url: cleanUrl, anonKey: cleanKey });
     setNotice("Connected. Now create an account or sign in below.");
   };
 
