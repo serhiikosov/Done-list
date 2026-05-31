@@ -117,9 +117,23 @@ export function StandupPanel({ entries, onToggle }: Props) {
           date={data.todayKey}
           items={data.todayPlanned}
           accent="var(--planned)"
-          empty="Nothing planned yet — add a few things above."
+          empty="Nothing planned yet — add a few above (switch the toggle to Planned)."
           onToggle={onToggle}
         />
+
+        {data.todayDone.length > 0 && (
+          <>
+            <div style={{ borderTop: "1px solid var(--border)" }} />
+            <Block
+              label="Done today so far"
+              date={data.todayKey}
+              items={data.todayDone}
+              accent="var(--done)"
+              empty=""
+              onToggle={onToggle}
+            />
+          </>
+        )}
 
         {data.carriedOver.length > 0 && (
           <>

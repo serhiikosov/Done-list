@@ -5,6 +5,8 @@ export interface StandupData {
   yesterdayKey: string;
   todayKey: string;
   yesterdayDone: Entry[];
+  /** What you've already shipped today. */
+  todayDone: Entry[];
   todayPlanned: Entry[];
   /** Anything still marked planned from before today — carried over / blocked. */
   carriedOver: Entry[];
@@ -18,6 +20,10 @@ export function buildStandup(entries: Entry[]): StandupData {
     .filter((e) => e.status === "done" && e.date === yKey)
     .sort((a, b) => a.createdAt - b.createdAt);
 
+  const todayDone = entries
+    .filter((e) => e.status === "done" && e.date === tKey)
+    .sort((a, b) => a.createdAt - b.createdAt);
+
   const todayPlanned = entries
     .filter((e) => e.status === "planned" && e.date === tKey)
     .sort((a, b) => a.createdAt - b.createdAt);
@@ -26,7 +32,14 @@ export function buildStandup(entries: Entry[]): StandupData {
     .filter((e) => e.status === "planned" && e.date < tKey)
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  return { yesterdayKey: yKey, todayKey: tKey, yesterdayDone, todayPlanned, carriedOver };
+  return {
+    yesterdayKey: yKey,
+    todayKey: tKey,
+    yesterdayDone,
+    todayDone,
+    todayPlanned,
+    carriedOver,
+  };
 }
 
 /** Plain-text script you can read aloud or paste into Slack. */

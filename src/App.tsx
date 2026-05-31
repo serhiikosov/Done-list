@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import type { Grouping } from "./types";
-import { useEntries } from "./hooks/useEntries";
+import { useEntries, type NewEntryInput } from "./hooks/useEntries";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
 import {
@@ -60,6 +60,11 @@ export default function App() {
   const flash = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
+  };
+
+  const handleAdd = (input: NewEntryInput) => {
+    add(input);
+    flash(input.status === "done" ? "Logged as done ✓" : "Added to plan →");
   };
 
   // ── Derived data ────────────────────────────────────────────────
@@ -220,7 +225,7 @@ export default function App() {
         {/* Scroll area */}
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-6">
-            <QuickAdd onAdd={add} recentTags={recentTags} />
+            <QuickAdd onAdd={handleAdd} recentTags={recentTags} />
 
             {(activeTag || query) && (
               <div className="mt-3 flex items-center gap-2 text-xs text-muted">

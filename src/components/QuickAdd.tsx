@@ -43,7 +43,8 @@ export const QuickAdd = forwardRef<HTMLInputElement, Props>(
         className="surface animate-rise relative rounded-[var(--radius-card)] p-2"
         style={{ boxShadow: "var(--shadow)" }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
           <span
             className="grid h-7 w-7 shrink-0 place-items-center rounded-md"
             style={{
@@ -71,18 +72,21 @@ export const QuickAdd = forwardRef<HTMLInputElement, Props>(
             className="ring-focus min-w-0 flex-1 rounded-md bg-transparent px-1 py-1.5 text-[15px] placeholder:text-[var(--text-faint)] focus:outline-none"
             aria-label="Add an entry"
           />
+          </div>
 
-          <StatusToggle value={status} onChange={setStatus} size="sm" />
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            <StatusToggle value={status} onChange={setStatus} size="sm" />
 
-          <button
-            onClick={submit}
-            disabled={!parse(value).text}
-            className="ring-focus inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-[var(--accent-fg)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ background: "var(--accent)" }}
-            aria-label="Add entry"
-          >
-            Add <CornerDownLeft size={14} strokeWidth={2.4} />
-          </button>
+            <button
+              onClick={submit}
+              disabled={!parse(value).text}
+              className="ring-focus inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-[var(--accent-fg)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ background: "var(--accent)" }}
+              aria-label="Add entry"
+            >
+              Add <CornerDownLeft size={14} strokeWidth={2.4} />
+            </button>
+          </div>
         </div>
 
         {suggestions.length > 0 && (
