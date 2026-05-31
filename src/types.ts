@@ -14,6 +14,8 @@ export interface Entry {
   tag?: string;
   createdAt: number;
   updatedAt: number;
+  /** Soft-delete tombstone so deletions propagate across synced devices. */
+  deleted?: boolean;
 }
 
 export interface AppState {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Entry, EntryStatus } from "../types";
 import { cryptoId, load, save } from "../lib/storage";
 import { todayKey } from "../lib/date";
@@ -11,22 +11,26 @@ export interface NewEntryInput {
 }
 
 export function useEntries() {
-  const [entries, setEntries] = useState<Entry[]>(() => load().entries);
+  // `all` includes soft-deleted tombstones (needed for cross-device sync);
+  // the UI consumes `entries`, which hides them.
+  const [all, setAll] = useState<Entry[]>(() => load().entries);
   const firstRender = useRef(true);
 
-  // Persist on every change (skip the very first run to avoid a redundant write).
+  const entries = useMemo(() => all.filter((e) => !e.deleted), [all]);
+
+  // Persist on every change (skip the first run to avoid a redundant write).
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
-    save({ entries, version: 1 });
-  }, [entries]);
+    save({ entries: all, version: 1 });
+  }, [all]);
 
   // Keep multiple tabs in sync.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "done-list:v1") setEntries(load().entries);
+      if (e.key === "done-list:v1") setAll(load().entries);
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -43,24 +47,27 @@ export function useEntries() {
       createdAt: now,
       updatedAt: now,
     };
-    setEntries((prev) => [entry, ...prev]);
+    setAll((prev) => [entry, ...prev]);
     return entry;
   }, []);
 
   const update = useCallback((id: string, patch: Partial<Entry>) => {
-    setEntries((prev) =>
-      prev.map((e) =>
-        e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e
-      )
+    setAll((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e))
     );
   }, []);
 
   const remove = useCallback((id: string) => {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+    // Soft delete so the deletion can propagate to other devices.
+    setAll((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, deleted: true, updatedAt: Date.now() } : e
+      )
+    );
   }, []);
 
   const toggleStatus = useCallback((id: string) => {
-    setEntries((prev) =>
+    setAll((prev) =>
       prev.map((e) =>
         e.id === id
           ? {
@@ -73,7 +80,33 @@ export function useEntries() {
     );
   }, []);
 
-  const replaceAll = useCallback((next: Entry[]) => setEntries(next), []);
+  const replaceAll = useCallback((next: Entry[]) => setAll(next), []);
 
-  return { entries, add, update, remove, toggleStatus, replaceAll };
+  /** Merge remote rows in by id, keeping whichever side was updated last. */
+  const mergeRemote = useCallback((rows: Entry[]) => {
+    setAll((prev) => {
+      const byId = new Map(prev.map((e) => [e.id, e]));
+      let changed = false;
+      for (const r of rows) {
+        const local = byId.get(r.id);
+        if (!local || r.updatedAt > local.updatedAt) {
+          byId.set(r.id, r);
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+    });
+  }, []);
+
+  return {
+    entries,
+    all,
+    add,
+    update,
+    remove,
+    toggleStatus,
+    replaceAll,
+    mergeRemote,
+  };
 }

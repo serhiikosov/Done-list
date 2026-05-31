@@ -11,8 +11,10 @@ import {
   Download,
   Upload,
   Flame,
+  Settings,
 } from "lucide-react";
 import type { Grouping } from "../types";
+import type { SyncStatus } from "../hooks/useSync";
 
 export type View = "timeline" | "standup";
 
@@ -29,7 +31,17 @@ interface Props {
   stats: { todayDone: number; weekDone: number; streak: number };
   onExport: () => void;
   onImport: (file: File) => void;
+  onOpenSettings: () => void;
+  syncStatus: SyncStatus;
 }
+
+const syncDot: Record<SyncStatus, string> = {
+  disabled: "transparent",
+  signedOut: "var(--planned)",
+  syncing: "var(--accent)",
+  synced: "var(--done)",
+  error: "var(--planned)",
+};
 
 const groupingOptions: { id: Grouping; label: string; icon: typeof Calendar }[] = [
   { id: "day", label: "Day", icon: CalendarDays },
@@ -197,6 +209,17 @@ export function Sidebar(props: Props) {
         </IconBtn>
         <IconBtn onClick={() => fileRef.current?.click()} label="Import JSON">
           <Upload size={15} />
+        </IconBtn>
+        <IconBtn onClick={props.onOpenSettings} label="Sync & settings">
+          <span className="relative">
+            <Settings size={15} />
+            {props.syncStatus !== "disabled" && (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full"
+                style={{ background: syncDot[props.syncStatus] }}
+              />
+            )}
+          </span>
         </IconBtn>
         <input
           ref={fileRef}

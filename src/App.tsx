@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Settings, Sun, Moon } from "lucide-react";
 import type { Grouping } from "./types";
 import { useEntries, type NewEntryInput } from "./hooks/useEntries";
+import { useSync } from "./hooks/useSync";
+import { SettingsModal } from "./components/SettingsModal";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
 import {
@@ -21,14 +23,17 @@ import { Timeline } from "./components/Timeline";
 import { StandupPanel } from "./components/StandupPanel";
 
 export default function App() {
-  const { entries, add, update, remove, toggleStatus, replaceAll } = useEntries();
+  const { entries, all, add, update, remove, toggleStatus, replaceAll, mergeRemote } =
+    useEntries();
   const { theme, toggle } = useTheme();
+  const sync = useSync(all, mergeRemote);
 
   const [view, setView] = useState<View>("standup");
   const [grouping, setGrouping] = useState<Grouping>("day");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const addRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -167,6 +172,8 @@ export default function App() {
           stats={stats}
           onExport={handleExport}
           onImport={handleImport}
+          onOpenSettings={() => setSettingsOpen(true)}
+          syncStatus={sync.status}
         />
       </div>
 
@@ -194,6 +201,30 @@ export default function App() {
                 {v}
               </button>
             ))}
+          </div>
+
+          {/* Mobile theme + settings */}
+          <div className="flex items-center gap-0.5 md:hidden">
+            <button
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="ring-focus grid h-8 w-8 place-items-center rounded-lg text-muted"
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Sync & settings"
+              className="ring-focus relative grid h-8 w-8 place-items-center rounded-lg text-muted"
+            >
+              <Settings size={16} />
+              {sync.status === "synced" && (
+                <span
+                  className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
+                  style={{ background: "var(--done)" }}
+                />
+              )}
+            </button>
           </div>
 
           {/* Search */}
@@ -261,6 +292,8 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} sync={sync} />
 
       {/* Toast */}
       {toast && (
