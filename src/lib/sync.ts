@@ -167,7 +167,8 @@ export function subscribeToChanges(
   };
 }
 
-/** The SQL a user runs once in the Supabase SQL editor to set things up. */
+/** The SQL a user runs once in the Supabase SQL editor to set things up.
+ *  Written to be idempotent — safe to run more than once. */
 export const SETUP_SQL = `create table if not exists entries (
   id text primary key,
   user_id uuid not null default auth.uid(),
@@ -182,9 +183,18 @@ export const SETUP_SQL = `create table if not exists entries (
 
 alter table entries enable row level security;
 
+drop policy if exists "Users manage their own entries" on entries;
 create policy "Users manage their own entries"
   on entries for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-alter publication supabase_realtime add table entries;`;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'entries'
+  ) then
+    alter publication supabase_realtime add table entries;
+  end if;
+end $$;`;
