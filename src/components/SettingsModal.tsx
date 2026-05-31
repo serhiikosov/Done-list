@@ -158,8 +158,9 @@ export function SettingsModal({ open, onClose, sync }: Props) {
                 rules).
               </li>
               <li>
-                In <b>Project Settings → API</b>, copy the <b>Project URL</b> and{" "}
-                <b>anon public</b> key into the fields here.
+                In <b>Project Settings → API Keys</b>, copy the <b>Project URL</b> and the{" "}
+                <b>Publishable key</b> (<code>sb_publishable_…</code>, or the legacy{" "}
+                <b>anon</b> key). Never use the secret key.
               </li>
             </ol>
 
@@ -182,10 +183,10 @@ export function SettingsModal({ open, onClose, sync }: Props) {
 
             <Field label="Project URL" value={url} onChange={setUrl} placeholder="https://xxxx.supabase.co" />
             <Field
-              label="anon public key"
+              label="Publishable / anon key"
               value={anonKey}
               onChange={setAnonKey}
-              placeholder="eyJhbGciOi…"
+              placeholder="sb_publishable_…  or  eyJhbGciOi…"
               mono
             />
             <button
