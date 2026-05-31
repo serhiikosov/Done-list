@@ -1,8 +1,9 @@
-import { forwardRef, useState } from "react";
-import { CornerDownLeft, Hash } from "lucide-react";
+import { forwardRef, useRef, useState } from "react";
+import { CornerDownLeft, Hash, CalendarDays } from "lucide-react";
 import type { EntryStatus } from "../types";
 import { StatusToggle } from "./StatusToggle";
 import type { NewEntryInput } from "../hooks/useEntries";
+import { todayKey, yesterdayKey, relativeDay } from "../lib/date";
 
 interface Props {
   onAdd: (input: NewEntryInput) => void;
@@ -22,13 +23,26 @@ export const QuickAdd = forwardRef<HTMLInputElement, Props>(
   ({ onAdd, recentTags }, ref) => {
     const [value, setValue] = useState("");
     const [status, setStatus] = useState<EntryStatus>("done");
+    const [date, setDate] = useState(todayKey());
+    const dateRef = useRef<HTMLInputElement>(null);
 
     const submit = () => {
       const { text, tag } = parse(value);
       if (!text) return;
-      onAdd({ text, tag, status });
+      onAdd({ text, tag, status, date });
       setValue("");
+      // Keep the chosen date so you can log several things for the same day.
     };
+
+    const openDatePicker = () => {
+      const el = dateRef.current;
+      if (!el) return;
+      if (typeof el.showPicker === "function") el.showPicker();
+      else el.focus();
+    };
+
+    const dateLabel = date === todayKey() ? "Today" : relativeDay(date);
+    const isPast = date !== todayKey();
 
     const showTagHint = /#[\w-]*$/.test(value);
     const typed = value.match(/#([\w-]*)$/)?.[1]?.toLowerCase() ?? "";
@@ -75,6 +89,24 @@ export const QuickAdd = forwardRef<HTMLInputElement, Props>(
           </div>
 
           <div className="flex items-center justify-between gap-2 sm:justify-end">
+            {/* Date — defaults to Today; tap to log for another day. */}
+            <button
+              onClick={openDatePicker}
+              onDoubleClick={() =>
+                setDate((d) => (d === todayKey() ? yesterdayKey() : todayKey()))
+              }
+              title="Set the day (e.g. log something from yesterday)"
+              className="ring-focus inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors"
+              style={{
+                background: isPast ? "var(--accent-soft)" : "var(--bg-subtle)",
+                color: isPast ? "var(--accent)" : "var(--text-muted)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <CalendarDays size={13} />
+              {dateLabel}
+            </button>
+
             <StatusToggle value={status} onChange={setStatus} size="sm" />
 
             <button
@@ -88,6 +120,18 @@ export const QuickAdd = forwardRef<HTMLInputElement, Props>(
             </button>
           </div>
         </div>
+
+        {/* Hidden native date input, opened by the date button */}
+        <input
+          ref={dateRef}
+          type="date"
+          value={date}
+          max={todayKey()}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
+          tabIndex={-1}
+          aria-hidden
+        />
 
         {suggestions.length > 0 && (
           <div className="animate-in mt-2 flex flex-wrap gap-1.5 px-1 pb-1">

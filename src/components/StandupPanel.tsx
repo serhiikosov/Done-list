@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { Check, Copy, Hash } from "lucide-react";
 import type { Entry } from "../types";
-import { buildStandup, standupToText } from "../lib/standup";
+import {
+  buildStandup,
+  buildStandupText,
+  type StandupScope,
+  type StandupFormat,
+} from "../lib/standup";
 import { fullDate } from "../lib/date";
 
 interface Props {
@@ -63,13 +68,14 @@ function Block({
 
 export function StandupPanel({ entries, onToggle }: Props) {
   const data = useMemo(() => buildStandup(entries), [entries]);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<StandupScope | null>(null);
+  const [format, setFormat] = useState<StandupFormat>("plain");
 
-  const copy = async () => {
+  const copy = async (scope: StandupScope) => {
     try {
-      await navigator.clipboard.writeText(standupToText(data));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(buildStandupText(data, scope, format));
+      setCopied(scope);
+      setTimeout(() => setCopied(null), 1600);
     } catch {
       /* clipboard blocked — ignore */
     }
@@ -80,26 +86,57 @@ export function StandupPanel({ entries, onToggle }: Props) {
       className="surface animate-rise rounded-[var(--radius-card)] p-5"
       style={{ boxShadow: "var(--shadow)" }}
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold">Standup script</h2>
           <p className="text-xs text-muted">Read it top to bottom — it's how you'd say it.</p>
         </div>
-        <button
-          onClick={copy}
-          className="ring-focus inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors"
-          style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-        >
-          {copied ? (
-            <>
-              <Check size={13} style={{ color: "var(--done)" }} /> Copied
-            </>
-          ) : (
-            <>
-              <Copy size={13} /> Copy
-            </>
-          )}
-        </button>
+
+        <div className="flex items-center gap-1.5">
+          {/* Plain / Slack format toggle */}
+          <div
+            className="inline-flex rounded-md p-0.5"
+            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+          >
+            {(["plain", "slack"] as StandupFormat[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFormat(f)}
+                className="ring-focus rounded px-2 py-1 text-xs font-medium capitalize transition-colors"
+                style={{
+                  background: format === f ? "var(--bg-elevated)" : "transparent",
+                  color: format === f ? "var(--text)" : "var(--text-muted)",
+                  boxShadow: format === f ? "var(--shadow)" : "none",
+                }}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Scoped copy buttons */}
+          {(
+            [
+              ["all", "Copy"],
+              ["yesterday", "Yest."],
+              ["today", "Today"],
+            ] as [StandupScope, string][]
+          ).map(([scope, label]) => (
+            <button
+              key={scope}
+              onClick={() => copy(scope)}
+              className="ring-focus inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            >
+              {copied === scope ? (
+                <Check size={12} style={{ color: "var(--done)" }} />
+              ) : (
+                <Copy size={12} />
+              )}
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-5">

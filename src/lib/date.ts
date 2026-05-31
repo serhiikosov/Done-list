@@ -23,6 +23,13 @@ export function todayKey(): string {
   return toDateKey(new Date());
 }
 
+/** Calendar yesterday (not skipping weekends). */
+export function yesterdayKey(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return toDateKey(d);
+}
+
 /** The previous *working* day relative to today (skips Sat/Sun back to Fri). */
 export function lastWorkingDayKey(from: Date = new Date()): string {
   let d = subDays(from, 1);

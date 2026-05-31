@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Hash, Trash2, ArrowRight } from "lucide-react";
+import { Check, Hash, Trash2, ArrowRight, CalendarDays, CalendarArrowUp } from "lucide-react";
 import type { Entry } from "../types";
-import { relativeDay } from "../lib/date";
+import { relativeDay, todayKey } from "../lib/date";
 
 interface Props {
   entry: Entry;
@@ -24,7 +24,9 @@ export function EntryItem({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(entry.text);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
   const done = entry.status === "done";
+  const isToday = entry.date === todayKey();
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -43,9 +45,17 @@ export function EntryItem({
     setEditing(false);
   };
 
+  const openDatePicker = () => {
+    const el = dateRef.current;
+    if (!el) return;
+    // showPicker() is the reliable way to open the native calendar on tap.
+    if (typeof el.showPicker === "function") el.showPicker();
+    else el.focus();
+  };
+
   return (
     <div
-      className="group flex items-start gap-3 rounded-lg px-2.5 py-2 transition-colors"
+      className="group relative flex items-start gap-3 rounded-lg px-2.5 py-2 transition-colors"
       style={{ background: "transparent" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -59,7 +69,7 @@ export function EntryItem({
           borderColor: done ? "var(--done)" : "var(--border-strong)",
         }}
         aria-label={done ? "Mark as planned" : "Mark as done"}
-        title={done ? "Done — click to move back to planned" : "Planned — click to mark done"}
+        title={done ? "Done — tap to move back to planned" : "Planned — tap to mark done"}
       >
         {done ? (
           <Check size={12} strokeWidth={3} color="#fff" />
@@ -100,7 +110,6 @@ export function EntryItem({
               setEditing(true);
             }}
             className="block w-full cursor-text text-left text-[15px] leading-snug"
-            style={{ color: done ? "var(--text)" : "var(--text)" }}
           >
             {entry.text}
           </button>
@@ -117,21 +126,78 @@ export function EntryItem({
             </button>
           )}
           {showDay && (
-            <span className="text-xs text-faint">{relativeDay(entry.date)}</span>
+            <button
+              onClick={openDatePicker}
+              className="ring-focus text-xs text-faint transition-colors hover:text-[var(--accent)]"
+            >
+              {relativeDay(entry.date)}
+            </button>
           )}
         </div>
       </div>
 
-      {/* Delete (reveals on hover) */}
-      <button
-        onClick={() => onRemove(entry.id)}
-        className="ring-focus mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-faint opacity-0 transition-all hover:text-[var(--text)] group-hover:opacity-100 focus-visible:opacity-100"
-        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-subtle)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-        aria-label="Delete entry"
-      >
-        <Trash2 size={14} />
-      </button>
+      {/* Actions — always visible on touch, reveal on hover for pointer devices */}
+      <div className="mt-0.5 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+        {!isToday && (
+          <ActionButton
+            label="Move to today"
+            onClick={() => onUpdate(entry.id, { date: todayKey() })}
+          >
+            <CalendarArrowUp size={14} />
+          </ActionButton>
+        )}
+        <ActionButton label="Change date" onClick={openDatePicker}>
+          <CalendarDays size={14} />
+        </ActionButton>
+        <ActionButton label="Delete entry" onClick={() => onRemove(entry.id)} danger>
+          <Trash2 size={14} />
+        </ActionButton>
+      </div>
+
+      {/* Hidden native date input, driven by the buttons above */}
+      <input
+        ref={dateRef}
+        type="date"
+        value={entry.date}
+        max={todayKey()}
+        onChange={(e) => {
+          if (e.target.value) onUpdate(entry.id, { date: e.target.value });
+        }}
+        className="pointer-events-none absolute h-0 w-0 opacity-0"
+        tabIndex={-1}
+        aria-hidden
+      />
     </div>
+  );
+}
+
+function ActionButton({
+  label,
+  onClick,
+  danger,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="ring-focus grid h-7 w-7 place-items-center rounded-md text-faint transition-colors hover:text-[var(--text)]"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "var(--bg-subtle)";
+        if (danger) e.currentTarget.style.color = "#e5484d";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.color = "var(--text-faint)";
+      }}
+    >
+      {children}
+    </button>
   );
 }
