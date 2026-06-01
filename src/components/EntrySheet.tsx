@@ -3,6 +3,7 @@ import { Check, ArrowRight, Hash, CalendarDays, X, Trash2 } from "lucide-react";
 import type { Entry, EntryStatus } from "../types";
 import { todayKey, yesterdayKey, relativeDay } from "../lib/date";
 import { tagColor } from "../lib/tags";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 interface Props {
   entry: Entry | null;
@@ -35,6 +36,17 @@ export function EntrySheet({ entry, onClose, onUpdate, onRemove, recentTags }: P
     return () => window.removeEventListener("keydown", onKey);
   }, [entry, onClose]);
 
+  // Size the textarea to its content when opened.
+  useEffect(() => {
+    if (entry && taRef.current) {
+      const el = taRef.current;
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 160) + "px";
+    }
+  }, [entry]);
+
+  useScrollLock(!!entry);
+
   if (!entry) return null;
 
   const save = () => {
@@ -56,7 +68,7 @@ export function EntrySheet({ entry, onClose, onUpdate, onRemove, recentTags }: P
 
   return (
     <div
-      className="animate-in fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      className="animate-in fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
       onClick={onClose}
     >

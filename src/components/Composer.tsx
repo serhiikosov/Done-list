@@ -3,6 +3,7 @@ import { Check, ArrowRight, Hash, CalendarDays, X, Mic } from "lucide-react";
 import type { EntryStatus } from "../types";
 import type { NewEntryInput } from "../hooks/useEntries";
 import { todayKey, yesterdayKey, relativeDay } from "../lib/date";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 interface Props {
   open: boolean;
@@ -70,6 +71,8 @@ export function Composer({ open, onClose, onAdd, recentTags }: Props) {
     rec.start();
   };
 
+  useScrollLock(open);
+
   if (!open) return null;
 
   const { text, tag } = parse(value);
@@ -102,7 +105,7 @@ export function Composer({ open, onClose, onAdd, recentTags }: Props) {
 
   return (
     <div
-      className="animate-in fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      className="animate-in fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
       onClick={onClose}
     >

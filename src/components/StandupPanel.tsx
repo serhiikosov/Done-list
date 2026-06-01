@@ -10,6 +10,7 @@ import {
 import { fullDate } from "../lib/date";
 import { tagColor } from "../lib/tags";
 import { SwipeRow } from "./SwipeRow";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 interface Props {
   entries: Entry[];
@@ -221,6 +222,7 @@ function ShareSheet({
 }) {
   const [format, setFormat] = useState<StandupFormat>("plain");
   const [copied, setCopied] = useState<StandupScope | null>(null);
+  useScrollLock(true);
 
   const copy = async (scope: StandupScope) => {
     try {
@@ -234,7 +236,7 @@ function ShareSheet({
 
   return (
     <div
-      className="animate-in fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      className="animate-in fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
       onClick={onClose}
     >

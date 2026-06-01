@@ -89,6 +89,7 @@ export function SwipeRow({ children, leftAction, onSwipeRight, rightAction, onSw
             dragged.current = false;
           }
         }}
+        className="select-none"
         style={{
           transform: `translateX(${dx}px)`,
           transition: animating ? "transform 0.22s cubic-bezier(0.2,0.7,0.2,1)" : "none",

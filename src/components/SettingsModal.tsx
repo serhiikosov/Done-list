@@ -12,6 +12,7 @@ import {
 import { getConfig, SETUP_SQL } from "../lib/sync";
 import type { useSync } from "../hooks/useSync";
 import type { ReminderConfig } from "../lib/reminder";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 interface Props {
   open: boolean;
@@ -45,6 +46,8 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
     if (open) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  useScrollLock(open);
 
   if (!open) return null;
 
@@ -106,7 +109,7 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
 
   return (
     <div
-      className="animate-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center"
+      className="animate-in fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto p-4 sm:items-center"
       style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={onClose}
     >
