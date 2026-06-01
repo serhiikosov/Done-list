@@ -20,15 +20,16 @@ export function EntryItem({ entry, showDay, onToggle, onEdit, onRemove, onTagCli
 
   return (
     <SwipeRow
+      bg="var(--bg-elevated)"
       leftAction={{ icon: <Check size={20} strokeWidth={3} />, bg: "var(--done)" }}
       onSwipeRight={() => onToggle(entry.id)}
       rightAction={{ icon: <Trash2 size={20} />, bg: "#e5484d" }}
       onSwipeLeft={() => onRemove(entry.id)}
     >
       <div
-        className="group flex items-start gap-3 px-2.5 py-3 transition-colors"
+        className="group flex items-start gap-3 px-4 py-3.5 transition-colors"
         onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "var(--bg-elevated)")}
       >
         {/* Status checkbox */}
         <button

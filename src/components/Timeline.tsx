@@ -98,17 +98,24 @@ export function Timeline({
               </span>
             </div>
 
-            <div className="flex flex-col">
-              {b.entries.map((e) => (
-                <EntryItem
+            <div
+              className="overflow-hidden rounded-2xl"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+            >
+              {b.entries.map((e, i) => (
+                <div
                   key={e.id}
-                  entry={e}
-                  showDay={showDay}
-                  onToggle={onToggle}
-                  onEdit={onEdit}
-                  onRemove={onRemove}
-                  onTagClick={onTagClick}
-                />
+                  style={i > 0 ? { borderTop: "1px solid var(--border)" } : undefined}
+                >
+                  <EntryItem
+                    entry={e}
+                    showDay={showDay}
+                    onToggle={onToggle}
+                    onEdit={onEdit}
+                    onRemove={onRemove}
+                    onTagClick={onTagClick}
+                  />
+                </div>
               ))}
             </div>
           </section>

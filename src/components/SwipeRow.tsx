@@ -13,12 +13,21 @@ interface Props {
   /** Drag left → reveals this on the right, fires on release past threshold. */
   rightAction?: Action;
   onSwipeLeft?: () => void;
+  /** Background of the sliding row (so it covers the action beneath). */
+  bg?: string;
 }
 
 const THRESHOLD = 72;
 const MAX = 110;
 
-export function SwipeRow({ children, leftAction, onSwipeRight, rightAction, onSwipeLeft }: Props) {
+export function SwipeRow({
+  children,
+  leftAction,
+  onSwipeRight,
+  rightAction,
+  onSwipeLeft,
+  bg = "var(--bg)",
+}: Props) {
   const [dx, setDx] = useState(0);
   const [animating, setAnimating] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -65,7 +74,7 @@ export function SwipeRow({ children, leftAction, onSwipeRight, rightAction, onSw
   };
 
   return (
-    <div className="relative overflow-hidden rounded-lg">
+    <div className="relative overflow-hidden">
       {/* Action behind the row */}
       {dx !== 0 && (
         <div className="absolute inset-0 flex items-center justify-between px-5">
@@ -94,7 +103,7 @@ export function SwipeRow({ children, leftAction, onSwipeRight, rightAction, onSw
           transform: `translateX(${dx}px)`,
           transition: animating ? "transform 0.22s cubic-bezier(0.2,0.7,0.2,1)" : "none",
           touchAction: "pan-y",
-          background: "var(--bg)",
+          background: bg,
         }}
       >
         {children}

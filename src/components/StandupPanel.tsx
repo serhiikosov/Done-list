@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Copy, Hash, Share, X, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Share, X, Plus, Trash2 } from "lucide-react";
 import type { Entry } from "../types";
 import {
   buildStandup,
@@ -134,57 +134,82 @@ function Section({
 }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-baseline gap-2">
-        <h2 className="text-[16px] font-semibold" style={{ color }}>
+      <div className="mb-2 flex items-baseline gap-2 px-1">
+        <h2 className="text-[15px] font-semibold" style={{ color }}>
           {eyebrow}
         </h2>
         {date && <span className="text-[13px] text-faint">{fullDate(date)}</span>}
       </div>
-      {items.length === 0 ? (
-        <p className="px-1 text-[15px] italic text-faint">{empty}</p>
-      ) : (
-        <ul className="flex flex-col">
-          {items.map((e) => {
-            const tc = e.tag ? tagColor(e.tag) : null;
-            return (
-              <li key={e.id}>
-                <SwipeRow
-                  leftAction={{ icon: <Check size={20} strokeWidth={3} />, bg: "var(--done)" }}
-                  onSwipeRight={() => onToggle(e.id)}
-                  rightAction={{ icon: <Trash2 size={20} />, bg: "#e5484d" }}
-                  onSwipeLeft={() => onRemove(e.id)}
-                >
-                  <div className="flex items-start gap-3 py-1.5">
-                    <button
-                      onClick={() => onToggle(e.id)}
-                      className="ring-focus tap mt-[9px] h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ background: color }}
-                      aria-label="Toggle status"
-                    />
-                    <button
-                      onClick={() => onEdit(e)}
-                      className="ring-focus min-w-0 flex-1 text-left text-[17px] leading-snug"
-                      style={{ color: muted ? "var(--text-muted)" : "var(--text)" }}
-                    >
-                      {e.text}
-                      {e.tag && tc && (
-                        <span
-                          className="ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 align-middle text-[11px] font-medium"
-                          style={{ background: tc.soft, color: tc.color }}
-                        >
-                          <Hash size={10} />
-                          {e.tag}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </SwipeRow>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div
+        className="overflow-hidden rounded-2xl"
+        style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+      >
+        {items.length === 0 ? (
+          <p className="px-4 py-3.5 text-[15px] italic text-faint">{empty}</p>
+        ) : (
+          items.map((e, i) => (
+            <div key={e.id} style={i > 0 ? { borderTop: "1px solid var(--border)" } : undefined}>
+              <SwipeRow
+                bg="var(--bg-elevated)"
+                leftAction={{ icon: <Check size={20} strokeWidth={3} />, bg: "var(--done)" }}
+                onSwipeRight={() => onToggle(e.id)}
+                rightAction={{ icon: <Trash2 size={20} />, bg: "#e5484d" }}
+                onSwipeLeft={() => onRemove(e.id)}
+              >
+                <StandupRow entry={e} muted={muted} onToggle={onToggle} onEdit={onEdit} />
+              </SwipeRow>
+            </div>
+          ))
+        )}
+      </div>
     </section>
+  );
+}
+
+function StandupRow({
+  entry,
+  muted,
+  onToggle,
+  onEdit,
+}: {
+  entry: Entry;
+  muted?: boolean;
+  onToggle: (id: string) => void;
+  onEdit: (entry: Entry) => void;
+}) {
+  const done = entry.status === "done";
+  const tc = entry.tag ? tagColor(entry.tag) : null;
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <button
+        onClick={() => onToggle(entry.id)}
+        aria-label="Toggle status"
+        className="ring-focus tap grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border-2 transition-all"
+        style={{
+          background: done ? "var(--done)" : "transparent",
+          borderColor: done ? "var(--done)" : "var(--planned)",
+        }}
+      >
+        {done && <Check size={13} strokeWidth={3} color="#fff" />}
+      </button>
+      <button onClick={() => onEdit(entry)} className="ring-focus min-w-0 flex-1 text-left">
+        <span
+          className="block text-[17px] leading-snug"
+          style={{ color: muted ? "var(--text-muted)" : "var(--text)" }}
+        >
+          {entry.text}
+        </span>
+        {entry.tag && tc && (
+          <span
+            className="mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px]"
+            style={{ background: "var(--bg-subtle)" }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: tc.color }} />
+            <span className="text-muted">{entry.tag}</span>
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 
