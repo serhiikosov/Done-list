@@ -26,14 +26,14 @@ export function EntryItem({ entry, showDay, onToggle, onEdit, onRemove, onTagCli
       onSwipeLeft={() => onRemove(entry.id)}
     >
       <div
-        className="group flex items-start gap-3 px-2.5 py-2.5 transition-colors"
+        className="group flex items-start gap-3 px-2.5 py-3 transition-colors"
         onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         {/* Status checkbox */}
         <button
           onClick={() => onToggle(entry.id)}
-          className="ring-focus tap mt-0.5 grid h-[20px] w-[20px] shrink-0 place-items-center rounded-md border transition-all"
+          className="ring-focus tap mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md border transition-all"
           style={{
             background: done ? "var(--done)" : "transparent",
             borderColor: done ? "var(--done)" : "var(--border-strong)",
@@ -41,15 +41,15 @@ export function EntryItem({ entry, showDay, onToggle, onEdit, onRemove, onTagCli
           aria-label={done ? "Mark as planned" : "Mark as done"}
         >
           {done ? (
-            <Check size={13} strokeWidth={3} color="#fff" />
+            <Check size={14} strokeWidth={3} color="#fff" />
           ) : (
-            <ArrowRight size={12} strokeWidth={2.5} color="var(--planned)" />
+            <ArrowRight size={13} strokeWidth={2.5} color="var(--planned)" />
           )}
         </button>
 
         {/* Text + meta — tap to edit */}
         <button onClick={() => onEdit(entry)} className="ring-focus min-w-0 flex-1 text-left">
-          <span className="block text-[16px] leading-snug">{entry.text}</span>
+          <span className="block text-[17px] leading-snug">{entry.text}</span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
             {entry.tag && tc && (
               <span

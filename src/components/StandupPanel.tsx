@@ -38,17 +38,17 @@ export function StandupPanel({ entries, onToggle, onEdit, onRemove, onCapture }:
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
             Standup
           </div>
-          <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight">
+          <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight">
             {heroTitle(data.todayKey)}
           </h1>
-          <p className="mt-1 text-sm text-muted">Read it top to bottom — it's how you'd say it.</p>
+          <p className="mt-1.5 text-[15px] text-muted">Read it top to bottom — it's how you'd say it.</p>
         </div>
         <button
           onClick={() => setShareOpen(true)}
-          className="ring-focus tap mt-1 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium"
+          className="ring-focus tap mt-1 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium"
           style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
         >
-          <Share size={15} /> Share
+          <Share size={17} /> Share
         </button>
       </div>
 
@@ -134,11 +134,11 @@ function Section({
 }) {
   return (
     <section>
-      <div className="mb-2 flex items-baseline gap-2">
-        <h2 className="text-[15px] font-semibold" style={{ color }}>
+      <div className="mb-2.5 flex items-baseline gap-2">
+        <h2 className="text-[16px] font-semibold" style={{ color }}>
           {eyebrow}
         </h2>
-        {date && <span className="text-xs text-faint">{fullDate(date)}</span>}
+        {date && <span className="text-[13px] text-faint">{fullDate(date)}</span>}
       </div>
       {items.length === 0 ? (
         <p className="px-1 text-[15px] italic text-faint">{empty}</p>

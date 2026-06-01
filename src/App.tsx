@@ -6,6 +6,7 @@ import { useSync } from "./hooks/useSync";
 import { SettingsModal } from "./components/SettingsModal";
 import { EntrySheet } from "./components/EntrySheet";
 import { ReviewBar } from "./components/ReviewBar";
+import { GroupingMenu } from "./components/GroupingMenu";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
 import {
@@ -255,12 +256,12 @@ export default function App() {
           {/* Mobile brand */}
           <div className="flex items-center gap-2 md:hidden">
             <span
-              className="grid h-7 w-7 place-items-center rounded-lg text-[var(--accent-fg)]"
+              className="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--accent-fg)]"
               style={{ background: "var(--accent)" }}
             >
-              <Check size={15} strokeWidth={3} />
+              <Check size={17} strokeWidth={3} />
             </span>
-            <span className="text-[15px] font-semibold tracking-tight">Done</span>
+            <span className="text-[17px] font-semibold tracking-tight">Done</span>
           </div>
 
           {/* Desktop: search + New */}
@@ -295,23 +296,23 @@ export default function App() {
           </div>
 
           {/* Mobile theme + settings */}
-          <div className="ml-auto flex items-center gap-0.5 md:hidden">
+          <div className="ml-auto flex items-center gap-1 md:hidden">
             <button
               onClick={toggle}
               aria-label="Toggle theme"
-              className="ring-focus tap grid h-9 w-9 place-items-center rounded-full text-muted"
+              className="ring-focus tap grid h-11 w-11 place-items-center rounded-full text-muted"
             >
-              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+              {theme === "dark" ? <Sun size={21} /> : <Moon size={21} />}
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
               aria-label="Sync & settings"
-              className="ring-focus tap relative grid h-9 w-9 place-items-center rounded-full text-muted"
+              className="ring-focus tap relative grid h-11 w-11 place-items-center rounded-full text-muted"
             >
-              <Settings size={17} />
+              <Settings size={21} />
               {sync.status !== "disabled" && (
                 <span
-                  className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
+                  className="absolute right-2 top-2 h-2 w-2 rounded-full"
                   style={{ background: sync.status === "synced" ? "var(--done)" : "var(--planned)" }}
                 />
               )}
@@ -321,7 +322,7 @@ export default function App() {
 
         {/* Scroll area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5 md:px-6 md:pb-12">
+          <div className="mx-auto w-full max-w-2xl px-5 pb-32 pt-5 md:px-6 md:pb-12">
             {view === "standup" ? (
               <StandupPanel
                 entries={entries}
@@ -332,48 +333,33 @@ export default function App() {
               />
             ) : (
               <div className="animate-in">
-                {/* Timeline hero */}
-                <div className="mb-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
-                    Timeline
+                {/* Timeline hero + grouping dropdown */}
+                <div className="mb-5 flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
+                      Timeline
+                    </div>
+                    <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight">
+                      Everything
+                    </h1>
                   </div>
-                  <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight">
-                    {groupings.find((g) => g.id === grouping)?.label} view
-                  </h1>
-                  <p className="mt-1 text-sm text-muted">
-                    Everything you've shipped and planned.
-                  </p>
-                </div>
-
-                {/* Grouping selector (mobile — desktop uses the sidebar) */}
-                <div
-                  className="mb-5 flex gap-0.5 rounded-xl p-0.5 md:hidden"
-                  style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-                >
-                  {groupings.map((g) => (
-                    <button
-                      key={g.id}
-                      onClick={() => setGrouping(g.id)}
-                      className="ring-focus tap flex-1 rounded-lg py-1.5 text-[13px] font-medium"
-                      style={{
-                        background: grouping === g.id ? "var(--bg-elevated)" : "transparent",
-                        color: grouping === g.id ? "var(--text)" : "var(--text-muted)",
-                        boxShadow: grouping === g.id ? "var(--shadow)" : "none",
-                      }}
-                    >
-                      {g.label}
-                    </button>
-                  ))}
+                  <div className="md:hidden">
+                    <GroupingMenu
+                      value={grouping}
+                      options={groupings.map((g) => ({ id: g.id, label: g.label }))}
+                      onChange={(id) => setGrouping(id as Grouping)}
+                    />
+                  </div>
                 </div>
 
                 {/* Search (mobile — desktop search lives in the header) */}
                 <div className="relative mb-5 flex items-center md:hidden">
-                  <Search size={16} className="absolute left-3 text-faint" />
+                  <Search size={18} className="absolute left-3.5 text-faint" />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search entries…"
-                    className="ring-focus h-11 w-full rounded-xl pl-9 pr-9 text-[15px] placeholder:text-[var(--text-faint)] focus:outline-none"
+                    className="ring-focus h-12 w-full rounded-2xl pl-11 pr-10 text-[16px] placeholder:text-[var(--text-faint)] focus:outline-none"
                     style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
                   />
                   {query && (
@@ -382,7 +368,7 @@ export default function App() {
                       className="ring-focus tap absolute right-3 text-faint"
                       aria-label="Clear search"
                     >
-                      <X size={16} />
+                      <X size={18} />
                     </button>
                   )}
                 </div>
@@ -449,7 +435,7 @@ export default function App() {
       {/* Toast */}
       {toast && (
         <div
-          className="animate-rise surface fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full py-2 pl-4 pr-2 text-sm md:bottom-6"
+          className="animate-rise surface fixed bottom-28 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full py-2.5 pl-5 pr-2.5 text-[15px] md:bottom-6"
           style={{ boxShadow: "var(--shadow)" }}
         >
           <span>{toast.message}</span>
