@@ -10,7 +10,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import { getConfig, SETUP_SQL } from "../lib/sync";
-import { getAIKey, setAIKey } from "../lib/ai";
+import { getProvider, setProvider, getKey, setKey, type AIProvider } from "../lib/ai";
 import type { useSync } from "../hooks/useSync";
 import type { ReminderConfig } from "../lib/reminder";
 import { useScrollLock } from "../hooks/useScrollLock";
@@ -32,7 +32,8 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [sqlCopied, setSqlCopied] = useState(false);
-  const [aiKey, setAiKeyState] = useState(getAIKey() ?? "");
+  const [aiProvider, setAiProvider] = useState<AIProvider>(getProvider());
+  const [aiKey, setAiKeyState] = useState(getKey(getProvider()) ?? "");
   const [aiSaved, setAiSaved] = useState(false);
 
   useEffect(() => {
@@ -320,19 +321,72 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
         <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
           <div className="text-sm font-semibold">AI standup &amp; review</div>
           <p className="mt-0.5 text-xs text-muted">
-            Paste your{" "}
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-              style={{ color: "var(--accent)" }}
-            >
-              Claude API key
-            </a>{" "}
-            to turn your notes into a spoken standup and weekly recap.
+            Turn your notes into a spoken standup and weekly recap.
           </p>
-          <div className="mt-3 flex gap-2">
+
+          {/* Provider */}
+          <div
+            className="mt-3 inline-flex w-full rounded-lg p-0.5"
+            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+          >
+            {(
+              [
+                ["gemini", "Gemini · free"],
+                ["claude", "Claude"],
+              ] as [AIProvider, string][]
+            ).map(([p, lbl]) => (
+              <button
+                key={p}
+                onClick={() => {
+                  setAiProvider(p);
+                  setAiKeyState(getKey(p) ?? "");
+                  setAiSaved(false);
+                }}
+                className="ring-focus tap flex-1 rounded-md py-1.5 text-[13px] font-medium"
+                style={{
+                  background: aiProvider === p ? "var(--bg-elevated)" : "transparent",
+                  color: aiProvider === p ? "var(--text)" : "var(--text-muted)",
+                  boxShadow: aiProvider === p ? "var(--shadow)" : "none",
+                }}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          <p className="mt-2 text-xs text-muted">
+            {aiProvider === "gemini" ? (
+              <>
+                Free key from{" "}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Google AI Studio
+                </a>{" "}
+                — no billing needed.
+              </>
+            ) : (
+              <>
+                Key from{" "}
+                <a
+                  href="https://console.anthropic.com/settings/keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Anthropic Console
+                </a>{" "}
+                — pay-as-you-go.
+              </>
+            )}
+          </p>
+
+          <div className="mt-2 flex gap-2">
             <input
               type="password"
               value={aiKey}
@@ -340,7 +394,7 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
                 setAiKeyState(e.target.value);
                 setAiSaved(false);
               }}
-              placeholder="sk-ant-…"
+              placeholder={aiProvider === "gemini" ? "AIza…" : "sk-ant-…"}
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
@@ -349,7 +403,8 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
             />
             <button
               onClick={() => {
-                setAIKey(aiKey.trim() || null);
+                setKey(aiProvider, aiKey.trim() || null);
+                setProvider(aiProvider);
                 setAiSaved(true);
                 setTimeout(() => setAiSaved(false), 1600);
               }}
@@ -360,8 +415,8 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
             </button>
           </div>
           <p className="mt-2 text-[11px] text-faint">
-            Stored only on this device; calls go directly to Anthropic. Usage is billed to your
-            key.
+            Stored only on this device; calls go directly to{" "}
+            {aiProvider === "gemini" ? "Google" : "Anthropic"}.
           </p>
         </div>
       </div>

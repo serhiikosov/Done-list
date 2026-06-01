@@ -1,25 +1,36 @@
 import type { Entry } from "../types";
 import type { StandupData } from "./standup";
 
-const KEY = "done-list:anthropic";
-const MODEL = "claude-haiku-4-5-20251001";
+export type AIProvider = "gemini" | "claude";
 
-export function getAIKey(): string | null {
-  return localStorage.getItem(KEY);
+const PROVIDER_KEY = "done-list:ai-provider";
+const KEYS: Record<AIProvider, string> = {
+  gemini: "done-list:gemini",
+  claude: "done-list:anthropic",
+};
+
+const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+export function getProvider(): AIProvider {
+  const p = localStorage.getItem(PROVIDER_KEY);
+  return p === "claude" ? "claude" : "gemini";
 }
-
-export function setAIKey(k: string | null) {
-  if (k) localStorage.setItem(KEY, k.trim());
-  else localStorage.removeItem(KEY);
+export function setProvider(p: AIProvider) {
+  localStorage.setItem(PROVIDER_KEY, p);
 }
-
+export function getKey(p: AIProvider): string | null {
+  return localStorage.getItem(KEYS[p]);
+}
+export function setKey(p: AIProvider, k: string | null) {
+  if (k) localStorage.setItem(KEYS[p], k.trim());
+  else localStorage.removeItem(KEYS[p]);
+}
 export function hasAIKey(): boolean {
-  return !!getAIKey();
+  return !!getKey(getProvider());
 }
 
-async function call(system: string, prompt: string): Promise<string> {
-  const key = getAIKey();
-  if (!key) throw new Error("Add your Claude API key in Settings to use AI.");
+async function callClaude(key: string, system: string, prompt: string): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -29,7 +40,7 @@ async function call(system: string, prompt: string): Promise<string> {
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: CLAUDE_MODEL,
       max_tokens: 700,
       system,
       messages: [{ role: "user", content: prompt }],
@@ -38,17 +49,59 @@ async function call(system: string, prompt: string): Promise<string> {
   if (!res.ok) {
     let detail = "";
     try {
-      const e = await res.json();
-      detail = e?.error?.message ?? "";
+      detail = (await res.json())?.error?.message ?? "";
     } catch {
       /* ignore */
     }
-    if (res.status === 401) throw new Error("Invalid API key. Check it in Settings.");
+    if (res.status === 401) throw new Error("Invalid Claude API key. Check it in Settings.");
     throw new Error(`Claude error ${res.status}${detail ? `: ${detail}` : ""}`);
   }
   const data = await res.json();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data.content ?? []).map((c: any) => c.text ?? "").join("").trim();
+}
+
+async function callGemini(key: string, system: string, prompt: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
+    key
+  )}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      // System text folded into the prompt for maximum REST compatibility.
+      contents: [{ role: "user", parts: [{ text: `${system}\n\n${prompt}` }] }],
+      generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
+    }),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = (await res.json())?.error?.message ?? "";
+    } catch {
+      /* ignore */
+    }
+    if (res.status === 400 && /api[_ ]?key/i.test(detail))
+      throw new Error("Invalid Gemini API key. Check it in Settings.");
+    throw new Error(`Gemini error ${res.status}${detail ? `: ${detail}` : ""}`);
+  }
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((p: any) => p.text ?? "")
+    .join("")
+    .trim();
+  if (!text) throw new Error("Gemini returned no text — try again.");
+  return text;
+}
+
+async function call(system: string, prompt: string): Promise<string> {
+  const provider = getProvider();
+  const key = getKey(provider);
+  if (!key) throw new Error("Add your API key in Settings to use AI.");
+  return provider === "claude"
+    ? callClaude(key, system, prompt)
+    : callGemini(key, system, prompt);
 }
 
 const fmt = (e: Entry) => `- ${e.text}${e.tag ? ` [${e.tag}]` : ""}`;
