@@ -23,7 +23,9 @@ export function getKey(p: AIProvider): string | null {
   return localStorage.getItem(KEYS[p]);
 }
 export function setKey(p: AIProvider, k: string | null) {
-  if (k) localStorage.setItem(KEYS[p], k.trim());
+  // Strip whitespace and any stray non-key characters (e.g. a pasted "…").
+  const clean = k ? k.replace(/[^A-Za-z0-9._-]/g, "") : "";
+  if (clean) localStorage.setItem(KEYS[p], clean);
   else localStorage.removeItem(KEYS[p]);
 }
 export function hasAIKey(): boolean {
@@ -81,9 +83,9 @@ async function callGemini(key: string, system: string, prompt: string): Promise<
     } catch {
       /* ignore */
     }
-    if (res.status === 400 && /api[_ ]?key/i.test(detail))
-      throw new Error("Invalid Gemini API key. Check it in Settings.");
-    throw new Error(`Gemini error ${res.status}${detail ? `: ${detail}` : ""}`);
+    // Surface Google's actual reason (key invalid, API disabled, referrer
+    // blocked, …) so it's diagnosable.
+    throw new Error(detail || `Gemini error ${res.status}`);
   }
   const data = await res.json();
   const text = (data.candidates?.[0]?.content?.parts ?? [])
