@@ -45,10 +45,11 @@ export function StandupPanel({ entries, onToggle, onEdit, onRemove, onCapture }:
         </div>
         <button
           onClick={() => setShareOpen(true)}
-          className="ring-focus tap mt-1 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium"
+          aria-label="Share standup"
+          className="ring-focus tap mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted"
           style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
         >
-          <Share size={17} /> Share
+          <Share size={18} />
         </button>
       </div>
 

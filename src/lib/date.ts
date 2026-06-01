@@ -1,14 +1,23 @@
 import {
   format,
   parseISO,
+  startOfDay,
+  endOfDay,
   startOfWeek,
   endOfWeek,
   startOfMonth,
+  endOfMonth,
   startOfYear,
+  endOfYear,
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
   isToday,
   isYesterday,
   isThisWeek,
   isThisYear,
+  isWithinInterval,
   differenceInCalendarDays,
   subDays,
 } from "date-fns";
@@ -109,4 +118,82 @@ export function relativeDay(key: string): string {
 
 export function fullDate(key: string): string {
   return format(parseKey(key), "EEEE, MMMM d, yyyy");
+}
+
+// ── Period navigation (one period at a time, swipe prev/next) ────────
+export function periodStart(d: Date, g: Grouping): Date {
+  switch (g) {
+    case "day":
+      return startOfDay(d);
+    case "week":
+      return startOfWeek(d, { weekStartsOn: 1 });
+    case "month":
+      return startOfMonth(d);
+    case "year":
+      return startOfYear(d);
+  }
+}
+
+export function periodEnd(d: Date, g: Grouping): Date {
+  switch (g) {
+    case "day":
+      return endOfDay(d);
+    case "week":
+      return endOfWeek(d, { weekStartsOn: 1 });
+    case "month":
+      return endOfMonth(d);
+    case "year":
+      return endOfYear(d);
+  }
+}
+
+export function shiftPeriod(d: Date, g: Grouping, dir: 1 | -1): Date {
+  switch (g) {
+    case "day":
+      return addDays(d, dir);
+    case "week":
+      return addWeeks(d, dir);
+    case "month":
+      return addMonths(d, dir);
+    case "year":
+      return addYears(d, dir);
+  }
+}
+
+/** True if the period containing `d` is wholly in the past (so "next" is allowed). */
+export function canGoNext(d: Date, g: Grouping): boolean {
+  return periodEnd(d, g).getTime() < Date.now();
+}
+
+export function inPeriod(key: string, d: Date, g: Grouping): boolean {
+  return isWithinInterval(parseKey(key), { start: periodStart(d, g), end: periodEnd(d, g) });
+}
+
+/** Big title for the current period. */
+export function periodLabel(d: Date, g: Grouping): { title: string; subtitle: string } {
+  switch (g) {
+    case "day": {
+      let title: string;
+      if (isToday(d)) title = "Today";
+      else if (isYesterday(d)) title = "Yesterday";
+      else title = format(d, "EEEE");
+      return { title, subtitle: format(d, isThisYear(d) ? "MMMM d" : "MMMM d, yyyy") };
+    }
+    case "week": {
+      const s = startOfWeek(d, { weekStartsOn: 1 });
+      const e = endOfWeek(d, { weekStartsOn: 1 });
+      const range =
+        s.getMonth() === e.getMonth()
+          ? `${format(s, "MMM d")} – ${format(e, "d")}`
+          : `${format(s, "MMM d")} – ${format(e, "MMM d")}`;
+      return {
+        title: isThisWeek(d, { weekStartsOn: 1 }) ? "This week" : "Week",
+        subtitle: isThisYear(s) ? range : `${range}, ${format(s, "yyyy")}`,
+      };
+    }
+    case "month":
+      return { title: format(d, "MMMM"), subtitle: format(d, "yyyy") };
+    case "year":
+      return { title: format(d, "yyyy"), subtitle: "" };
+  }
 }

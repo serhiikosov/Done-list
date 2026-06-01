@@ -5,8 +5,7 @@ import { useEntries, type NewEntryInput } from "./hooks/useEntries";
 import { useSync } from "./hooks/useSync";
 import { SettingsModal } from "./components/SettingsModal";
 import { EntrySheet } from "./components/EntrySheet";
-import { ReviewBar } from "./components/ReviewBar";
-import { GroupingMenu } from "./components/GroupingMenu";
+import { PeriodView } from "./components/PeriodView";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
 import {
@@ -31,7 +30,6 @@ import {
 import { Sidebar, type View } from "./components/Sidebar";
 import { Composer } from "./components/Composer";
 import { BottomBar } from "./components/BottomBar";
-import { Timeline } from "./components/Timeline";
 import { StandupPanel } from "./components/StandupPanel";
 
 export default function App() {
@@ -209,19 +207,6 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const emptyHint = activeTag
-    ? `No entries tagged #${activeTag} yet.`
-    : query
-      ? "No entries match your search."
-      : "Press / to log the first thing you did today.";
-
-  const groupings: GroupingOption[] = [
-    { id: "day", label: "Day" },
-    { id: "week", label: "Week" },
-    { id: "month", label: "Month" },
-    { id: "year", label: "Year" },
-  ];
-
   return (
     <div className="flex h-screen overflow-hidden">
       <div className="hidden md:flex">
@@ -332,47 +317,7 @@ export default function App() {
                 onCapture={() => setComposerOpen(true)}
               />
             ) : (
-              <div className="animate-in">
-                {/* Timeline hero + grouping dropdown */}
-                <div className="mb-5 flex items-end justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
-                      Timeline
-                    </div>
-                    <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight">
-                      Everything
-                    </h1>
-                  </div>
-                  <div className="md:hidden">
-                    <GroupingMenu
-                      value={grouping}
-                      options={groupings.map((g) => ({ id: g.id, label: g.label }))}
-                      onChange={(id) => setGrouping(id as Grouping)}
-                    />
-                  </div>
-                </div>
-
-                {/* Search (mobile — desktop search lives in the header) */}
-                <div className="relative mb-5 flex items-center md:hidden">
-                  <Search size={18} className="absolute left-3.5 text-faint" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search entries…"
-                    className="ring-focus h-12 w-full rounded-2xl pl-11 pr-10 text-[16px] placeholder:text-[var(--text-faint)] focus:outline-none"
-                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-                  />
-                  {query && (
-                    <button
-                      onClick={() => setQuery("")}
-                      className="ring-focus tap absolute right-3 text-faint"
-                      aria-label="Clear search"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                </div>
-
+              <div>
                 {activeTag && (
                   <div className="mb-4 flex items-center gap-2 text-xs text-muted">
                     <span>Filtered by</span>
@@ -385,22 +330,14 @@ export default function App() {
                     </button>
                   </div>
                 )}
-
-                {filtered.length > 0 && (
-                  <ReviewBar
-                    entries={filtered}
-                    scopeLabel={`${groupings.find((g) => g.id === grouping)?.label} view`}
-                  />
-                )}
-
-                <Timeline
+                <PeriodView
                   entries={filtered}
                   grouping={grouping}
+                  onGroupingChange={setGrouping}
                   onToggle={toggleStatus}
                   onEdit={setEditingEntry}
                   onRemove={handleRemove}
                   onTagClick={(t) => setActiveTag(t)}
-                  emptyHint={emptyHint}
                 />
               </div>
             )}
@@ -452,11 +389,6 @@ export default function App() {
       )}
     </div>
   );
-}
-
-interface GroupingOption {
-  id: Grouping;
-  label: string;
 }
 
 interface Toast {
