@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, Settings, Sun, Moon, Plus, Check } from "lucide-react";
-import type { Grouping } from "./types";
+import type { Grouping, Entry } from "./types";
 import { useEntries, type NewEntryInput } from "./hooks/useEntries";
 import { useSync } from "./hooks/useSync";
 import { SettingsModal } from "./components/SettingsModal";
+import { EntrySheet } from "./components/EntrySheet";
+import { ReviewBar } from "./components/ReviewBar";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
 import {
@@ -11,6 +13,14 @@ import {
   toDateKey,
   parseKey,
 } from "./lib/date";
+import {
+  loadReminder,
+  saveReminder,
+  firedToday,
+  markFired,
+  notify,
+  type ReminderConfig,
+} from "./lib/reminder";
 import {
   startOfWeek,
   isWithinInterval,
@@ -33,11 +43,14 @@ export default function App() {
   const [grouping, setGrouping] = useState<Grouping>("day");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+  const [reminder, setReminder] = useState<ReminderConfig>(loadReminder);
 
   const searchRef = useRef<HTMLInputElement>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────
   useEffect(() => {
@@ -63,14 +76,26 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const flash = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2200);
+  const flash = (message: string, action?: Toast["action"]) => {
+    clearTimeout(toastTimer.current);
+    setToast({ message, action });
+    toastTimer.current = setTimeout(() => setToast(null), action ? 5000 : 2200);
   };
 
   const handleAdd = (input: NewEntryInput) => {
     add(input);
     flash(input.status === "done" ? "Logged as done ✓" : "Added to plan →");
+  };
+
+  const handleRemove = (id: string) => {
+    remove(id);
+    flash("Entry deleted", {
+      label: "Undo",
+      onClick: () => {
+        update(id, { deleted: false });
+        setToast(null);
+      },
+    });
   };
 
   // ── Derived data ────────────────────────────────────────────────
@@ -124,6 +149,38 @@ export default function App() {
 
     return { todayDone, weekDone, streak };
   }, [entries]);
+
+  // ── Daily reminder (local; fires while the app is open) ─────────
+  useEffect(() => {
+    saveReminder(reminder);
+  }, [reminder]);
+
+  useEffect(() => {
+    if (!reminder.enabled) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+    const check = () => {
+      const tk = todayKey();
+      if (firedToday(tk) || stats.todayDone > 0) return;
+      const [h, m] = reminder.time.split(":").map(Number);
+      const now = new Date();
+      if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) {
+        markFired(tk);
+        notify("Log today's wins ✓", "What did you ship today?");
+        flash("Log today's wins — what did you ship?", {
+          label: "Add",
+          onClick: () => {
+            setComposerOpen(true);
+            setToast(null);
+          },
+        });
+      }
+    };
+    check();
+    const id = setInterval(check, 60000);
+    return () => clearInterval(id);
+  }, [reminder, stats.todayDone]);
 
   // ── Data import / export ────────────────────────────────────────
   const handleExport = () => {
@@ -269,6 +326,8 @@ export default function App() {
               <StandupPanel
                 entries={entries}
                 onToggle={toggleStatus}
+                onEdit={setEditingEntry}
+                onRemove={handleRemove}
                 onCapture={() => setComposerOpen(true)}
               />
             ) : (
@@ -307,28 +366,53 @@ export default function App() {
                   ))}
                 </div>
 
-                {(activeTag || query) && (
+                {/* Search (mobile — desktop search lives in the header) */}
+                <div className="relative mb-5 flex items-center md:hidden">
+                  <Search size={16} className="absolute left-3 text-faint" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search entries…"
+                    className="ring-focus h-11 w-full rounded-xl pl-9 pr-9 text-[15px] placeholder:text-[var(--text-faint)] focus:outline-none"
+                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+                  />
+                  {query && (
+                    <button
+                      onClick={() => setQuery("")}
+                      className="ring-focus tap absolute right-3 text-faint"
+                      aria-label="Clear search"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {activeTag && (
                   <div className="mb-4 flex items-center gap-2 text-xs text-muted">
                     <span>Filtered by</span>
-                    {activeTag && (
-                      <button
-                        onClick={() => setActiveTag(null)}
-                        className="ring-focus inline-flex items-center gap-1 rounded-md px-2 py-0.5"
-                        style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                      >
-                        #{activeTag} <X size={11} />
-                      </button>
-                    )}
-                    {query && <span className="italic">"{query}"</span>}
+                    <button
+                      onClick={() => setActiveTag(null)}
+                      className="ring-focus inline-flex items-center gap-1 rounded-md px-2 py-0.5"
+                      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                    >
+                      #{activeTag} <X size={11} />
+                    </button>
                   </div>
+                )}
+
+                {filtered.length > 0 && (
+                  <ReviewBar
+                    entries={filtered}
+                    scopeLabel={`${groupings.find((g) => g.id === grouping)?.label} view`}
+                  />
                 )}
 
                 <Timeline
                   entries={filtered}
                   grouping={grouping}
                   onToggle={toggleStatus}
-                  onUpdate={update}
-                  onRemove={remove}
+                  onEdit={setEditingEntry}
+                  onRemove={handleRemove}
                   onTagClick={(t) => setActiveTag(t)}
                   emptyHint={emptyHint}
                 />
@@ -347,15 +431,37 @@ export default function App() {
         onAdd={handleAdd}
         recentTags={recentTags}
       />
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} sync={sync} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        sync={sync}
+        reminder={reminder}
+        onChangeReminder={setReminder}
+      />
+      <EntrySheet
+        entry={editingEntry}
+        onClose={() => setEditingEntry(null)}
+        onUpdate={update}
+        onRemove={handleRemove}
+        recentTags={recentTags}
+      />
 
       {/* Toast */}
       {toast && (
         <div
-          className="animate-rise surface fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm md:bottom-6"
+          className="animate-rise surface fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full py-2 pl-4 pr-2 text-sm md:bottom-6"
           style={{ boxShadow: "var(--shadow)" }}
         >
-          {toast}
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              onClick={toast.action.onClick}
+              className="ring-focus tap rounded-full px-3 py-1 text-xs font-semibold"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -365,4 +471,9 @@ export default function App() {
 interface GroupingOption {
   id: Grouping;
   label: string;
+}
+
+interface Toast {
+  message: string;
+  action?: { label: string; onClick: () => void };
 }

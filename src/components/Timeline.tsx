@@ -8,7 +8,7 @@ interface Props {
   entries: Entry[];
   grouping: Grouping;
   onToggle: (id: string) => void;
-  onUpdate: (id: string, patch: Partial<Entry>) => void;
+  onEdit: (entry: Entry) => void;
   onRemove: (id: string) => void;
   onTagClick: (tag: string) => void;
   emptyHint: string;
@@ -26,7 +26,7 @@ export function Timeline({
   entries,
   grouping,
   onToggle,
-  onUpdate,
+  onEdit,
   onRemove,
   onTagClick,
   emptyHint,
@@ -105,7 +105,7 @@ export function Timeline({
                   entry={e}
                   showDay={showDay}
                   onToggle={onToggle}
-                  onUpdate={onUpdate}
+                  onEdit={onEdit}
                   onRemove={onRemove}
                   onTagClick={onTagClick}
                 />

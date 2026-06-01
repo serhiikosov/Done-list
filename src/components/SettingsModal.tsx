@@ -11,14 +11,17 @@ import {
 } from "lucide-react";
 import { getConfig, SETUP_SQL } from "../lib/sync";
 import type { useSync } from "../hooks/useSync";
+import type { ReminderConfig } from "../lib/reminder";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   sync: ReturnType<typeof useSync>;
+  reminder: ReminderConfig;
+  onChangeReminder: (c: ReminderConfig) => void;
 }
 
-export function SettingsModal({ open, onClose, sync }: Props) {
+export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder }: Props) {
   const existing = getConfig();
   const [url, setUrl] = useState(existing?.url ?? "");
   const [anonKey, setAnonKey] = useState(existing?.anonKey ?? "");
@@ -276,8 +279,55 @@ export function SettingsModal({ open, onClose, sync }: Props) {
             </button>
           </div>
         )}
+
+        {/* Daily reminder */}
+        <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold">Daily reminder</div>
+              <div className="text-xs text-muted">A nudge to log what you shipped.</div>
+            </div>
+            <Switch
+              on={reminder.enabled}
+              onToggle={() => onChangeReminder({ ...reminder, enabled: !reminder.enabled })}
+            />
+          </div>
+          {reminder.enabled && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">Remind me at</span>
+              <input
+                type="time"
+                value={reminder.time}
+                onChange={(e) => onChangeReminder({ ...reminder, time: e.target.value })}
+                className="ring-focus rounded-lg px-2.5 py-1 text-sm"
+                style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+              />
+              <span className="w-full text-[11px] text-faint">
+                Fires while the app is open or recently used. True background reminders need
+                server push — ask me to set that up later.
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+      className="ring-focus tap relative h-6 w-10 shrink-0 rounded-full transition-colors"
+      style={{ background: on ? "var(--accent)" : "var(--border-strong)" }}
+    >
+      <span
+        className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
+        style={{ left: on ? "18px" : "2px" }}
+      />
+    </button>
   );
 }
 

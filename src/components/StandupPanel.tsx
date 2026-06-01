@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Copy, Hash, Share, X, Plus } from "lucide-react";
+import { Check, Copy, Hash, Share, X, Plus, Trash2 } from "lucide-react";
 import type { Entry } from "../types";
 import {
   buildStandup,
@@ -8,14 +8,18 @@ import {
   type StandupFormat,
 } from "../lib/standup";
 import { fullDate } from "../lib/date";
+import { tagColor } from "../lib/tags";
+import { SwipeRow } from "./SwipeRow";
 
 interface Props {
   entries: Entry[];
   onToggle: (id: string) => void;
+  onEdit: (entry: Entry) => void;
+  onRemove: (id: string) => void;
   onCapture: () => void;
 }
 
-export function StandupPanel({ entries, onToggle, onCapture }: Props) {
+export function StandupPanel({ entries, onToggle, onEdit, onRemove, onCapture }: Props) {
   const data = useMemo(() => buildStandup(entries), [entries]);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -58,6 +62,8 @@ export function StandupPanel({ entries, onToggle, onCapture }: Props) {
             items={data.yesterdayDone}
             empty="Nothing logged for your last working day."
             onToggle={onToggle}
+            onEdit={onEdit}
+            onRemove={onRemove}
           />
           <Section
             eyebrow="Today I will"
@@ -66,6 +72,8 @@ export function StandupPanel({ entries, onToggle, onCapture }: Props) {
             items={data.todayPlanned}
             empty="No plans yet — tap ＋ to add one."
             onToggle={onToggle}
+            onEdit={onEdit}
+            onRemove={onRemove}
           />
           {data.todayDone.length > 0 && (
             <Section
@@ -74,6 +82,8 @@ export function StandupPanel({ entries, onToggle, onCapture }: Props) {
               color="var(--done)"
               items={data.todayDone}
               onToggle={onToggle}
+              onEdit={onEdit}
+              onRemove={onRemove}
             />
           )}
           {data.carriedOver.length > 0 && (
@@ -83,6 +93,8 @@ export function StandupPanel({ entries, onToggle, onCapture }: Props) {
               items={data.carriedOver}
               muted
               onToggle={onToggle}
+              onEdit={onEdit}
+              onRemove={onRemove}
             />
           )}
         </div>
@@ -106,6 +118,8 @@ function Section({
   empty,
   muted,
   onToggle,
+  onEdit,
+  onRemove,
 }: {
   eyebrow: string;
   date?: string;
@@ -114,41 +128,59 @@ function Section({
   empty?: string;
   muted?: boolean;
   onToggle: (id: string) => void;
+  onEdit: (entry: Entry) => void;
+  onRemove: (id: string) => void;
 }) {
   return (
     <section>
-      <div className="mb-3 flex items-baseline gap-2">
+      <div className="mb-2 flex items-baseline gap-2">
         <h2 className="text-[15px] font-semibold" style={{ color }}>
           {eyebrow}
         </h2>
         {date && <span className="text-xs text-faint">{fullDate(date)}</span>}
       </div>
       {items.length === 0 ? (
-        <p className="text-[15px] italic text-faint">{empty}</p>
+        <p className="px-1 text-[15px] italic text-faint">{empty}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {items.map((e) => (
-            <li key={e.id} className="flex items-start gap-3">
-              <button
-                onClick={() => onToggle(e.id)}
-                className="ring-focus tap mt-[7px] h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: color }}
-                aria-label="Toggle status"
-              />
-              <span
-                className="text-[17px] leading-snug"
-                style={{ color: muted ? "var(--text-muted)" : "var(--text)" }}
-              >
-                {e.text}
-                {e.tag && (
-                  <span className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-xs text-faint">
-                    <Hash size={10} />
-                    {e.tag}
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
+        <ul className="flex flex-col">
+          {items.map((e) => {
+            const tc = e.tag ? tagColor(e.tag) : null;
+            return (
+              <li key={e.id}>
+                <SwipeRow
+                  leftAction={{ icon: <Check size={20} strokeWidth={3} />, bg: "var(--done)" }}
+                  onSwipeRight={() => onToggle(e.id)}
+                  rightAction={{ icon: <Trash2 size={20} />, bg: "#e5484d" }}
+                  onSwipeLeft={() => onRemove(e.id)}
+                >
+                  <div className="flex items-start gap-3 py-1.5">
+                    <button
+                      onClick={() => onToggle(e.id)}
+                      className="ring-focus tap mt-[9px] h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: color }}
+                      aria-label="Toggle status"
+                    />
+                    <button
+                      onClick={() => onEdit(e)}
+                      className="ring-focus min-w-0 flex-1 text-left text-[17px] leading-snug"
+                      style={{ color: muted ? "var(--text-muted)" : "var(--text)" }}
+                    >
+                      {e.text}
+                      {e.tag && tc && (
+                        <span
+                          className="ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 align-middle text-[11px] font-medium"
+                          style={{ background: tc.soft, color: tc.color }}
+                        >
+                          <Hash size={10} />
+                          {e.tag}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </SwipeRow>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

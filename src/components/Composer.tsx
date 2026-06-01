@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ArrowRight, Hash, CalendarDays, X } from "lucide-react";
+import { Check, ArrowRight, Hash, CalendarDays, X, Mic } from "lucide-react";
 import type { EntryStatus } from "../types";
 import type { NewEntryInput } from "../hooks/useEntries";
 import { todayKey, yesterdayKey, relativeDay } from "../lib/date";
@@ -21,8 +21,16 @@ export function Composer({ open, onClose, onAdd, recentTags }: Props) {
   const [value, setValue] = useState("");
   const [status, setStatus] = useState<EntryStatus>("done");
   const [date, setDate] = useState(todayKey());
+  const [listening, setListening] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
+  const recRef = useRef<{ stop: () => void } | null>(null);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const SpeechRec: any =
+    typeof window !== "undefined"
+      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      : undefined;
 
   useEffect(() => {
     if (open) {
@@ -32,8 +40,35 @@ export function Composer({ open, onClose, onAdd, recentTags }: Props) {
       // Let the sheet animate in before focusing (smoother on iOS).
       const t = setTimeout(() => taRef.current?.focus(), 120);
       return () => clearTimeout(t);
+    } else {
+      recRef.current?.stop();
     }
   }, [open]);
+
+  const toggleVoice = () => {
+    if (!SpeechRec) return;
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const rec = new SpeechRec();
+    rec.lang = navigator.language || "en-US";
+    rec.interimResults = false;
+    rec.continuous = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (ev: any) => {
+      const t = Array.from(ev.results)
+        .map((r: any) => r[0].transcript)
+        .join(" ")
+        .trim();
+      if (t) setValue((v) => (v ? v.trimEnd() + " " : "") + t);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  };
 
   if (!open) return null;
 
@@ -116,26 +151,42 @@ export function Composer({ open, onClose, onAdd, recentTags }: Props) {
           </div>
 
           {/* The text */}
-          <textarea
-            ref={taRef}
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-              if (e.key === "Escape") onClose();
-            }}
-            rows={2}
-            placeholder={status === "done" ? "What did you ship?" : "What will you do?"}
-            className="ring-focus w-full resize-none rounded-2xl px-4 py-3 text-[17px] leading-snug placeholder:text-[var(--text-faint)] focus:outline-none"
-            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-          />
+          <div className="relative">
+            <textarea
+              ref={taRef}
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+                if (e.key === "Escape") onClose();
+              }}
+              rows={2}
+              placeholder={status === "done" ? "What did you ship?" : "What will you do?"}
+              className="ring-focus w-full resize-none rounded-2xl py-3 pl-4 pr-12 text-[17px] leading-snug placeholder:text-[var(--text-faint)] focus:outline-none"
+              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            />
+            {SpeechRec && (
+              <button
+                onClick={toggleVoice}
+                aria-label={listening ? "Stop dictation" : "Dictate"}
+                className="ring-focus tap absolute bottom-2.5 right-2.5 grid h-8 w-8 place-items-center rounded-full transition-colors"
+                style={{
+                  background: listening ? "var(--accent)" : "var(--bg-elevated)",
+                  color: listening ? "var(--accent-fg)" : "var(--text-muted)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <Mic size={15} className={listening ? "animate-pulse" : ""} />
+              </button>
+            )}
+          </div>
 
           {/* Tag suggestions */}
           {suggestions.length > 0 && (
