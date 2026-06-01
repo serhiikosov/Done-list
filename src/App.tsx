@@ -6,6 +6,11 @@ import { useSync } from "./hooks/useSync";
 import { SettingsModal } from "./components/SettingsModal";
 import { EntrySheet } from "./components/EntrySheet";
 import { PeriodView } from "./components/PeriodView";
+import { Confetti } from "./components/Confetti";
+import { AISheet } from "./components/AISheet";
+import { buildStandup } from "./lib/standup";
+import { aiStandup, aiReview } from "./lib/ai";
+import { haptic, hapticSuccess } from "./lib/haptics";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
 import {
@@ -47,9 +52,24 @@ export default function App() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [reminder, setReminder] = useState<ReminderConfig>(loadReminder);
+  const [burst, setBurst] = useState(0);
+  const [aiSheet, setAiSheet] = useState<{ title: string; generate: () => Promise<string> } | null>(
+    null
+  );
 
   const searchRef = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const prevStreak = useRef(0);
+
+  const celebrate = () => {
+    setBurst((b) => b + 1);
+    hapticSuccess();
+  };
+
+  const handleToggle = (id: string) => {
+    haptic();
+    toggleStatus(id);
+  };
 
   // ── Keyboard shortcuts ──────────────────────────────────────────
   useEffect(() => {
@@ -82,6 +102,14 @@ export default function App() {
   };
 
   const handleAdd = (input: NewEntryInput) => {
+    // Celebrate the first thing you ship each day.
+    if (
+      input.status === "done" &&
+      (input.date ?? todayKey()) === todayKey() &&
+      !entries.some((e) => e.status === "done" && e.date === todayKey())
+    ) {
+      celebrate();
+    }
     add(input);
     flash(input.status === "done" ? "Logged as done ✓" : "Added to plan →");
   };
@@ -148,6 +176,21 @@ export default function App() {
 
     return { todayDone, weekDone, streak };
   }, [entries]);
+
+  // Celebrate streak milestones.
+  useEffect(() => {
+    const milestones = [3, 7, 14, 30, 50, 100, 365];
+    if (stats.streak > prevStreak.current && milestones.includes(stats.streak)) {
+      setBurst((b) => b + 1);
+      hapticSuccess();
+    }
+    prevStreak.current = stats.streak;
+  }, [stats.streak]);
+
+  const openAIStandup = () =>
+    setAiSheet({ title: "AI standup", generate: () => aiStandup(buildStandup(entries)) });
+  const openAIReview = (label: string, doneItems: Entry[]) =>
+    setAiSheet({ title: `AI review · ${label}`, generate: () => aiReview(label, doneItems) });
 
   // ── Daily reminder (local; fires while the app is open) ─────────
   useEffect(() => {
@@ -307,14 +350,15 @@ export default function App() {
 
         {/* Scroll area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl px-5 pb-32 pt-5 md:px-6 md:pb-12">
+          <div key={view} className="animate-in mx-auto w-full max-w-2xl px-5 pb-32 pt-5 md:px-6 md:pb-12">
             {view === "standup" ? (
               <StandupPanel
                 entries={entries}
-                onToggle={toggleStatus}
+                onToggle={handleToggle}
                 onEdit={setEditingEntry}
                 onRemove={handleRemove}
                 onCapture={() => setComposerOpen(true)}
+                onAIScript={openAIStandup}
               />
             ) : (
               <div>
@@ -334,10 +378,11 @@ export default function App() {
                   entries={filtered}
                   grouping={grouping}
                   onGroupingChange={setGrouping}
-                  onToggle={toggleStatus}
+                  onToggle={handleToggle}
                   onEdit={setEditingEntry}
                   onRemove={handleRemove}
                   onTagClick={(t) => setActiveTag(t)}
+                  onAIReview={openAIReview}
                 />
               </div>
             )}
@@ -368,6 +413,17 @@ export default function App() {
         onRemove={handleRemove}
         recentTags={recentTags}
       />
+      <AISheet
+        open={!!aiSheet}
+        title={aiSheet?.title ?? ""}
+        generate={aiSheet?.generate ?? null}
+        onClose={() => setAiSheet(null)}
+        onOpenSettings={() => {
+          setAiSheet(null);
+          setSettingsOpen(true);
+        }}
+      />
+      <Confetti fire={burst} />
 
       {/* Toast */}
       {toast && (

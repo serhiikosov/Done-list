@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Check, Inbox, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Check, Inbox, RotateCcw, Sparkles } from "lucide-react";
 import type { Entry, Grouping } from "../types";
 import {
   periodStart,
@@ -22,6 +22,7 @@ interface Props {
   onEdit: (entry: Entry) => void;
   onRemove: (id: string) => void;
   onTagClick: (tag: string) => void;
+  onAIReview: (label: string, doneItems: Entry[]) => void;
 }
 
 const GROUPS: { id: Grouping; label: string }[] = [
@@ -39,6 +40,7 @@ export function PeriodView({
   onEdit,
   onRemove,
   onTagClick,
+  onAIReview,
 }: Props) {
   const [cursor, setCursor] = useState<Date>(() => new Date());
   const [dx, setDx] = useState(0);
@@ -193,14 +195,28 @@ export function PeriodView({
           <span className="text-muted">planned</span>
         </div>
         {doneCount > 0 && (
-          <button
-            onClick={copyRecap}
-            className="ring-focus tap inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium text-muted"
-            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-          >
-            {copied ? <Check size={14} style={{ color: "var(--done)" }} /> : <Copy size={14} />}
-            Recap
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() =>
+                onAIReview(
+                  `${label.title}${label.subtitle ? ` (${label.subtitle})` : ""}`,
+                  items.filter((e) => e.status === "done")
+                )
+              }
+              className="ring-focus tap inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-[var(--accent-fg)]"
+              style={{ background: "var(--accent)" }}
+            >
+              <Sparkles size={14} /> AI review
+            </button>
+            <button
+              onClick={copyRecap}
+              aria-label="Copy recap"
+              className="ring-focus tap grid h-9 w-9 place-items-center rounded-full text-muted"
+              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            >
+              {copied ? <Check size={15} style={{ color: "var(--done)" }} /> : <Copy size={15} />}
+            </button>
+          </div>
         )}
       </div>
 

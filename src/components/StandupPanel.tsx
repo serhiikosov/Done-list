@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Copy, Share, X, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Share, X, Plus, Trash2, Sparkles } from "lucide-react";
 import type { Entry } from "../types";
 import {
   buildStandup,
@@ -18,9 +18,10 @@ interface Props {
   onEdit: (entry: Entry) => void;
   onRemove: (id: string) => void;
   onCapture: () => void;
+  onAIScript: () => void;
 }
 
-export function StandupPanel({ entries, onToggle, onEdit, onRemove, onCapture }: Props) {
+export function StandupPanel({ entries, onToggle, onEdit, onRemove, onCapture, onAIScript }: Props) {
   const data = useMemo(() => buildStandup(entries), [entries]);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -43,14 +44,24 @@ export function StandupPanel({ entries, onToggle, onEdit, onRemove, onCapture }:
           </h1>
           <p className="mt-1.5 text-[15px] text-muted">Read it top to bottom — it's how you'd say it.</p>
         </div>
-        <button
-          onClick={() => setShareOpen(true)}
-          aria-label="Share standup"
-          className="ring-focus tap mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted"
-          style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
-        >
-          <Share size={18} />
-        </button>
+        <div className="mt-1 flex shrink-0 items-center gap-2">
+          <button
+            onClick={onAIScript}
+            aria-label="AI standup"
+            className="ring-focus tap grid h-10 w-10 place-items-center rounded-full text-[var(--accent-fg)]"
+            style={{ background: "var(--accent)" }}
+          >
+            <Sparkles size={18} />
+          </button>
+          <button
+            onClick={() => setShareOpen(true)}
+            aria-label="Share standup"
+            className="ring-focus tap grid h-10 w-10 place-items-center rounded-full text-muted"
+            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+          >
+            <Share size={18} />
+          </button>
+        </div>
       </div>
 
       {nothingYet ? (

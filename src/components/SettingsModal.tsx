@@ -10,6 +10,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import { getConfig, SETUP_SQL } from "../lib/sync";
+import { getAIKey, setAIKey } from "../lib/ai";
 import type { useSync } from "../hooks/useSync";
 import type { ReminderConfig } from "../lib/reminder";
 import { useScrollLock } from "../hooks/useScrollLock";
@@ -31,6 +32,8 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [aiKey, setAiKeyState] = useState(getAIKey() ?? "");
+  const [aiSaved, setAiSaved] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -311,6 +314,55 @@ export function SettingsModal({ open, onClose, sync, reminder, onChangeReminder 
               </span>
             </div>
           )}
+        </div>
+
+        {/* AI */}
+        <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+          <div className="text-sm font-semibold">AI standup &amp; review</div>
+          <p className="mt-0.5 text-xs text-muted">
+            Paste your{" "}
+            <a
+              href="https://console.anthropic.com/settings/keys"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+              style={{ color: "var(--accent)" }}
+            >
+              Claude API key
+            </a>{" "}
+            to turn your notes into a spoken standup and weekly recap.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <input
+              type="password"
+              value={aiKey}
+              onChange={(e) => {
+                setAiKeyState(e.target.value);
+                setAiSaved(false);
+              }}
+              placeholder="sk-ant-…"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="ring-focus h-10 flex-1 rounded-lg px-3 font-mono text-xs focus:outline-none"
+              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            />
+            <button
+              onClick={() => {
+                setAIKey(aiKey.trim() || null);
+                setAiSaved(true);
+                setTimeout(() => setAiSaved(false), 1600);
+              }}
+              className="ring-focus tap h-10 rounded-lg px-4 text-sm font-medium text-[var(--accent-fg)]"
+              style={{ background: "var(--accent)" }}
+            >
+              {aiSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-faint">
+            Stored only on this device; calls go directly to Anthropic. Usage is billed to your
+            key.
+          </p>
         </div>
       </div>
     </div>
