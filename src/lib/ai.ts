@@ -43,7 +43,7 @@ async function callClaude(key: string, system: string, prompt: string): Promise<
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 700,
+      max_tokens: 1024,
       system,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -73,7 +73,13 @@ async function callGemini(key: string, system: string, prompt: string): Promise<
     body: JSON.stringify({
       // System text folded into the prompt for maximum REST compatibility.
       contents: [{ role: "user", parts: [{ text: `${system}\n\n${prompt}` }] }],
-      generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
+      generationConfig: {
+        maxOutputTokens: 1200,
+        temperature: 0.7,
+        // 2.5-flash is a thinking model; disable thinking so the whole
+        // token budget goes to the answer (otherwise replies get truncated).
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   });
   if (!res.ok) {
@@ -135,7 +141,7 @@ export async function aiReview(label: string, doneItems: Entry[]): Promise<strin
   const list = doneItems.map(fmt).join("\n") || "(nothing yet)";
   const prompt = `Period: ${label}\n\nEverything I shipped:\n${list}\n\nWrite a recap of what I accomplished.`;
   return call(
-    "You summarize a person's shipped work into a clear, organized recap suitable for a 1:1 or self-review. Group related items under short bold theme headers, keep it specific and concrete, and end with one sentence on overall impact. No fluff.",
+    "You summarize a person's shipped work into a clear, organized recap suitable for a 1:1 or self-review. Group related items under short bold theme headers (use **Header** markdown and '- ' for bullets), be specific and concrete, and end with one short 'Overall impact' line. Start directly with the first header — no preamble or intro sentence.",
     prompt
   );
 }

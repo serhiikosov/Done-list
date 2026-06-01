@@ -10,6 +10,42 @@ interface Props {
   onOpenSettings: () => void;
 }
 
+function inline(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.startsWith("**") && p.endsWith("**") ? (
+      <strong key={i} className="font-semibold">
+        {p.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={i}>{p}</span>
+    )
+  );
+}
+
+/** Minimal markdown: **bold** and '-'/'*' bullets. */
+function Markdown({ text }: { text: string }) {
+  const out: React.ReactNode[] = [];
+  text.split("\n").forEach((line, idx) => {
+    const t = line.trim();
+    if (!t) {
+      out.push(<div key={idx} className="h-2.5" />);
+      return;
+    }
+    const bullet = t.match(/^[-*]\s+(.*)/);
+    if (bullet) {
+      out.push(
+        <div key={idx} className="flex gap-2">
+          <span style={{ color: "var(--text-faint)" }}>•</span>
+          <span>{inline(bullet[1])}</span>
+        </div>
+      );
+      return;
+    }
+    out.push(<p key={idx}>{inline(t)}</p>);
+  });
+  return <div className="flex flex-col gap-1 text-[16px] leading-relaxed">{out}</div>;
+}
+
 export function AISheet({ open, title, generate, onClose, onOpenSettings }: Props) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +82,9 @@ export function AISheet({ open, title, generate, onClose, onOpenSettings }: Prop
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      // Strip markdown for a clean paste (Slack/docs/standup).
+      const plain = text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^\s*[-*]\s+/gm, "• ");
+      await navigator.clipboard.writeText(plain);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -108,7 +146,7 @@ export function AISheet({ open, title, generate, onClose, onOpenSettings }: Prop
               )}
             </div>
           ) : (
-            <p className="whitespace-pre-wrap text-[16px] leading-relaxed">{text}</p>
+            <Markdown text={text} />
           )}
         </div>
 
