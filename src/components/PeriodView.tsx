@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Check, Inbox } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Check, Inbox, RotateCcw } from "lucide-react";
 import type { Entry, Grouping } from "../types";
 import {
   periodStart,
@@ -89,6 +89,13 @@ export function PeriodView({
     setCursor((c) => shiftPeriod(c, grouping, dir));
   };
 
+  const nowTitle = periodLabel(new Date(), grouping).title;
+  const jumpToNow = () => {
+    setAnimating(true);
+    setDx(0);
+    setCursor(new Date());
+  };
+
   const copyRecap = async () => {
     const done = items.filter((e) => e.status === "done");
     const lines = [`Shipped — ${label.title}${label.subtitle ? ` (${label.subtitle})` : ""}`];
@@ -159,7 +166,20 @@ export function PeriodView({
         </div>
       </div>
 
-      {/* Count line + recap */}
+      {/* Back to current period */}
+      {nextAllowed && (
+        <div className="mb-4 flex justify-center">
+          <button
+            onClick={jumpToNow}
+            className="ring-focus tap inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold"
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+          >
+            <RotateCcw size={14} /> Back to {nowTitle.toLowerCase()}
+          </button>
+        </div>
+      )}
+
+      {/* Count line + recap (static) */}
       <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-[15px]">
           <span className="font-semibold tabular-nums" style={{ color: "var(--done)" }}>
@@ -184,18 +204,21 @@ export function PeriodView({
         )}
       </div>
 
-      {/* Swipeable period content */}
+      {/* Swipeable period content — fills the screen so you can swipe anywhere */}
       <div
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
-        style={{
-          transform: `translateX(${dx}px)`,
-          transition: animating ? "transform 0.24s cubic-bezier(0.2,0.7,0.2,1)" : "none",
-          touchAction: "pan-y",
-        }}
+        className="min-h-[58vh]"
+        style={{ touchAction: "pan-y" }}
       >
+        <div
+          style={{
+            transform: `translateX(${dx}px)`,
+            transition: animating ? "transform 0.24s cubic-bezier(0.2,0.7,0.2,1)" : "none",
+          }}
+        >
         {items.length === 0 ? (
           <div className="mt-10 flex flex-col items-center text-center">
             <span
@@ -234,6 +257,7 @@ export function PeriodView({
             ))}
           </Card>
         )}
+        </div>
       </div>
     </div>
   );
