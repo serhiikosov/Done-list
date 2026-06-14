@@ -301,11 +301,12 @@ function GoalDetailSheet({
         g,
         otherGoals.map((o) => ({ title: o.title, horizon: o.horizon }))
       );
+      // Keep `auto` as-is: auto goals should re-pick their timeframe on every
+      // replan (so Chill/Intense actually changes the horizon).
       onUpdate(goal.id, {
         summary: r.summary,
         layers: r.layers,
         horizon: r.horizon ?? g.horizon,
-        auto: false,
         ...over,
       });
     } catch (e) {
@@ -392,7 +393,7 @@ function GoalDetailSheet({
                   <button
                     key={p.id}
                     disabled={loading}
-                    onClick={() => pace !== p.id && breakdown({ pace: p.id })}
+                    onClick={() => pace !== p.id && breakdown({ pace: p.id, auto: true })}
                     className="ring-focus tap rounded-md px-2.5 py-1 text-[12px] font-medium disabled:opacity-50"
                     style={{
                       background: pace === p.id ? "var(--bg-elevated)" : "transparent",
