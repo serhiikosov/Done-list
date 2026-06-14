@@ -310,6 +310,7 @@ function GoalDetailSheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<GoalHorizon | null>(null);
+  const [confirm, setConfirm] = useState<null | "replan" | "delete">(null);
   const ranRef = useRef(false);
   useScrollLock(true);
   const pace = goal.pace ?? "balanced";
@@ -553,26 +554,60 @@ function GoalDetailSheet({
         )}
       </div>
 
-      <div className="flex gap-2 px-5 pb-5 pt-2">
-        <button
-          onClick={() => onRemove(goal.id)}
-          className="ring-focus tap grid h-11 w-11 shrink-0 place-items-center rounded-2xl"
-          style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "#e5484d" }}
-          aria-label="Delete goal"
-        >
-          <Trash2 size={17} />
-        </button>
-        {layers.length > 0 && (
+      {confirm ? (
+        <div className="px-5 pb-5 pt-2">
+          <p className="mb-2 text-[14px] text-muted">
+            {confirm === "delete"
+              ? "Delete this goal? This can't be undone."
+              : "Replace the current plan with a new one?"}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirm(null)}
+              className="ring-focus tap h-11 flex-1 rounded-2xl text-[15px] font-medium"
+              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (confirm === "delete") onRemove(goal.id);
+                else breakdown();
+                setConfirm(null);
+              }}
+              className="ring-focus tap h-11 flex-1 rounded-2xl text-[15px] font-semibold"
+              style={
+                confirm === "delete"
+                  ? { background: "#e5484d", color: "#fff" }
+                  : { background: "var(--accent)", color: "var(--accent-fg)" }
+              }
+            >
+              {confirm === "delete" ? "Delete" : "Replan"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2 px-5 pb-5 pt-2">
           <button
-            onClick={() => breakdown()}
-            disabled={loading}
-            className="ring-focus tap inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[15px] font-medium"
-            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            onClick={() => setConfirm("delete")}
+            className="ring-focus tap grid h-11 w-11 shrink-0 place-items-center rounded-2xl"
+            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "#e5484d" }}
+            aria-label="Delete goal"
           >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Replan
+            <Trash2 size={17} />
           </button>
-        )}
-      </div>
+          {layers.length > 0 && (
+            <button
+              onClick={() => setConfirm("replan")}
+              disabled={loading}
+              className="ring-focus tap inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[15px] font-medium"
+              style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+            >
+              <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Replan
+            </button>
+          )}
+        </div>
+      )}
     </Overlay>
   );
 }
