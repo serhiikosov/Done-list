@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus, X, Sparkles, RefreshCw, Trash2, Target, Check, ChevronRight } from "lucide-react";
 import type { Goal, GoalHorizon, Entry } from "../types";
 import { aiBreakdownGoal } from "../lib/ai";
@@ -454,9 +455,9 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return (
+  return createPortal(
     <div
-      className="animate-in fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
+      className="animate-in fixed inset-0 z-[80] flex items-end justify-center sm:items-center"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
       onClick={onClose}
     >
@@ -467,7 +468,8 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
