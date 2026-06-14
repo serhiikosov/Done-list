@@ -10,8 +10,7 @@ import { EntrySheet } from "./components/EntrySheet";
 import { PeriodView } from "./components/PeriodView";
 import { Confetti } from "./components/Confetti";
 import { AISheet } from "./components/AISheet";
-import { buildStandup } from "./lib/standup";
-import { aiStandup, aiReview } from "./lib/ai";
+import { aiReview } from "./lib/ai";
 import { haptic, hapticSuccess } from "./lib/haptics";
 import { useTheme } from "./hooks/useTheme";
 import { exportJSON, importJSON } from "./lib/storage";
@@ -37,7 +36,6 @@ import {
 import { Sidebar, type View } from "./components/Sidebar";
 import { Composer } from "./components/Composer";
 import { BottomBar } from "./components/BottomBar";
-import { StandupPanel } from "./components/StandupPanel";
 
 export default function App() {
   const { entries, all, add, update, remove, toggleStatus, replaceAll, mergeRemote } =
@@ -46,7 +44,7 @@ export default function App() {
   const sync = useSync(all, mergeRemote);
   const { goals, add: addGoal, update: updateGoal, remove: removeGoal } = useGoals();
 
-  const [view, setView] = useState<View>("standup");
+  const [view, setView] = useState<View>("today");
   const [grouping, setGrouping] = useState<Grouping>("day");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -91,7 +89,7 @@ export default function App() {
         setQuery("");
         target.blur();
       } else if (!typing && (e.key === "1" || e.key === "2")) {
-        setView(e.key === "1" ? "standup" : "timeline");
+        setView(e.key === "1" ? "today" : "goals");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -200,8 +198,6 @@ export default function App() {
     if (e) remove(e.id);
   };
 
-  const openAIStandup = () =>
-    setAiSheet({ title: "AI standup", generate: () => aiStandup(buildStandup(entries)) });
   const openAIReview = (label: string, doneItems: Entry[]) =>
     setAiSheet({ title: `AI review · ${label}`, generate: () => aiReview(label, doneItems) });
 
@@ -364,16 +360,7 @@ export default function App() {
         {/* Scroll area */}
         <div className="flex-1 overflow-y-auto">
           <div key={view} className="animate-in mx-auto w-full max-w-2xl px-5 pb-32 pt-5 md:px-6 md:pb-12">
-            {view === "standup" ? (
-              <StandupPanel
-                entries={entries}
-                onToggle={handleToggle}
-                onEdit={setEditingEntry}
-                onRemove={handleRemove}
-                onCapture={() => setComposerOpen(true)}
-                onAIScript={openAIStandup}
-              />
-            ) : view === "goals" ? (
+            {view === "goals" ? (
               <GoalsView
                 goals={goals}
                 entries={entries}

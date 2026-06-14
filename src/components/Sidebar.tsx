@@ -5,7 +5,7 @@ import {
   Calendar,
   CalendarClock,
   ListChecks,
-  Mic,
+  House,
   Moon,
   Sun,
   Download,
@@ -17,7 +17,7 @@ import {
 import type { Grouping } from "../types";
 import type { SyncStatus } from "../hooks/useSync";
 
-export type View = "timeline" | "standup" | "goals";
+export type View = "today" | "goals";
 
 interface Props {
   view: View;
@@ -111,18 +111,11 @@ export function Sidebar(props: Props) {
       {/* Views */}
       <nav className="flex flex-col gap-0.5">
         <NavButton
-          active={props.view === "standup"}
-          onClick={() => props.setView("standup")}
-          icon={Mic}
+          active={props.view === "today"}
+          onClick={() => props.setView("today")}
+          icon={House}
         >
-          Standup
-        </NavButton>
-        <NavButton
-          active={props.view === "timeline"}
-          onClick={() => props.setView("timeline")}
-          icon={ListChecks}
-        >
-          Timeline
+          Today
         </NavButton>
         <NavButton
           active={props.view === "goals"}
@@ -133,8 +126,8 @@ export function Sidebar(props: Props) {
         </NavButton>
       </nav>
 
-      {/* Grouping (only meaningful for timeline) */}
-      {props.view === "timeline" && (
+      {/* Grouping (the Today view groups by day/week/month/year) */}
+      {props.view === "today" && (
         <div className="animate-in">
           <div className="mb-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
             Group by

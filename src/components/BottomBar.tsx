@@ -1,4 +1,4 @@
-import { Mic, ListChecks, Target, Plus } from "lucide-react";
+import { House, Target, Plus } from "lucide-react";
 import type { View } from "./Sidebar";
 
 interface Props {
@@ -33,9 +33,8 @@ export function BottomBar({ view, setView, onCapture }: Props) {
           borderTop: "1px solid var(--border)",
         }}
       >
-        <div className="mx-auto flex max-w-md items-center justify-around px-2 pt-2">
-          <Tab active={view === "standup"} onClick={() => setView("standup")} icon={<Mic size={23} />} label="Standup" />
-          <Tab active={view === "timeline"} onClick={() => setView("timeline")} icon={<ListChecks size={23} />} label="Timeline" />
+        <div className="mx-auto flex max-w-xs items-center justify-around px-2 pt-2">
+          <Tab active={view === "today"} onClick={() => setView("today")} icon={<House size={23} />} label="Today" />
           <Tab active={view === "goals"} onClick={() => setView("goals")} icon={<Target size={23} />} label="Goals" />
         </div>
       </nav>
