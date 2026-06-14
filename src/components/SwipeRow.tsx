@@ -75,15 +75,21 @@ export function SwipeRow({
 
   return (
     <div className="relative overflow-hidden">
-      {/* Action behind the row */}
-      {dx !== 0 && (
-        <div className="absolute inset-0 flex items-center justify-between px-5">
-          <span style={{ opacity: dx > 0 ? Math.min(1, dx / THRESHOLD) : 0, color: leftAction?.bg }}>
-            {leftAction?.icon}
-          </span>
-          <span style={{ opacity: dx < 0 ? Math.min(1, -dx / THRESHOLD) : 0, color: rightAction?.bg }}>
-            {rightAction?.icon}
-          </span>
+      {/* Coloured action revealed beneath the row as it slides */}
+      {dx > 0 && leftAction && (
+        <div
+          className="absolute inset-0 flex items-center justify-start pl-6 text-white"
+          style={{ background: leftAction.bg }}
+        >
+          {leftAction.icon}
+        </div>
+      )}
+      {dx < 0 && rightAction && (
+        <div
+          className="absolute inset-0 flex items-center justify-end pr-6 text-white"
+          style={{ background: rightAction.bg }}
+        >
+          {rightAction.icon}
         </div>
       )}
       <div
