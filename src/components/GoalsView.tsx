@@ -146,14 +146,33 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
     return () => clearTimeout(t);
   }, []);
 
+  const submit = () => title.trim() && onSave({ title, detail, horizon, auto });
+
   return (
     <Overlay onClose={onClose}>
-      <SheetHeader title="New goal" onClose={onClose} />
-      <div className="flex flex-col gap-4 px-5 pb-5 pt-3">
+      {/* iOS-style header: Cancel · title · Create (always above the keyboard) */}
+      <div className="flex items-center justify-between px-4 pt-4">
+        <button onClick={onClose} className="ring-focus tap px-1 text-[15px] text-muted">
+          Cancel
+        </button>
+        <span className="text-[15px] font-semibold">New goal</span>
+        <button
+          onClick={submit}
+          disabled={!title.trim()}
+          className="ring-focus tap px-1 text-[15px] font-semibold disabled:opacity-40"
+          style={{ color: "var(--accent)" }}
+        >
+          Create
+        </button>
+      </div>
+      <div className="flex max-h-[68vh] flex-col gap-4 overflow-y-auto px-5 pb-5 pt-4">
         <input
           ref={ref}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
           placeholder="What do you want to achieve?"
           className="ring-focus w-full rounded-2xl px-4 py-3 text-[17px] placeholder:text-[var(--text-faint)] focus:outline-none"
           style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
@@ -209,14 +228,6 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
             ))}
           </div>
         </div>
-        <button
-          onClick={() => title.trim() && onSave({ title, detail, horizon, auto })}
-          disabled={!title.trim()}
-          className="ring-focus tap h-12 rounded-2xl text-[15px] font-semibold text-[var(--accent-fg)] disabled:opacity-40"
-          style={{ background: "var(--accent)" }}
-        >
-          Create goal
-        </button>
       </div>
     </Overlay>
   );
@@ -444,18 +455,3 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
   );
 }
 
-function SheetHeader({ title, onClose }: { title: string; onClose: () => void }) {
-  return (
-    <div className="flex items-center justify-between px-5 pb-1 pt-4">
-      <h3 className="text-base font-semibold">{title}</h3>
-      <button
-        onClick={onClose}
-        className="ring-focus tap grid h-8 w-8 place-items-center rounded-full text-muted"
-        style={{ background: "var(--bg-subtle)" }}
-        aria-label="Close"
-      >
-        <X size={15} />
-      </button>
-    </div>
-  );
-}
