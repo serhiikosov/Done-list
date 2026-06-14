@@ -28,6 +28,8 @@ export interface AppState {
 
 export type GoalHorizon = "3-year" | "1-year" | "quarter" | "month" | "week";
 
+export type GoalPace = "chill" | "balanced" | "intense";
+
 export interface GoalLayer {
   horizon: GoalHorizon;
   label: string;
@@ -43,6 +45,8 @@ export interface Goal {
   horizon: GoalHorizon;
   /** When true, AI picks the realistic timeframe during breakdown. */
   auto?: boolean;
+  /** How aggressive the plan should be. */
+  pace?: GoalPace;
   /** AI-generated, user-editable breakdown. */
   summary?: string;
   layers: GoalLayer[];

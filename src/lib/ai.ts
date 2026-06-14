@@ -152,8 +152,15 @@ export async function aiBreakdownGoal(
         .join("\n")}`
     : "";
 
+  const pace = goal.pace ?? "balanced";
+  const paceInstruction = {
+    chill: "Pace: CHILL — relaxed and sustainable. Prefer a longer timeframe and only a few weekly actions.",
+    balanced: "Pace: BALANCED — steady, realistic progress.",
+    intense: "Pace: INTENSE — ambitious but still safe/healthy. Prefer a shorter timeframe and focused, demanding weekly actions.",
+  }[pace];
+
   const horizonInstruction = goal.auto
-    ? `Decide the realistic, HEALTHY timeframe yourself — pick the largest horizon (one of 3-year, 1-year, quarter, month) that fits a safe pace for this goal, and set "horizon" to it. In "summary", briefly state the timeframe you chose and why (e.g. healthy weight gain ~0.25–0.5 kg/week).`
+    ? `Decide the realistic, HEALTHY timeframe yourself for the chosen pace — pick the largest horizon (one of 3-year, 1-year, quarter, month) that fits, and set "horizon" to it. In "summary", briefly state the timeframe you chose and why (e.g. healthy weight gain ~0.25–0.5 kg/week).`
     : `Plan should span up to "${goal.horizon}". Set "horizon" to "${goal.horizon}".`;
   const span = goal.auto
     ? "the horizons from your chosen top horizon down to week"
@@ -164,6 +171,8 @@ ${goal.detail ? `Details: ${goal.detail}` : ""}
 Today: ${today}${context}
 
 ${horizonInstruction}
+${paceInstruction}
+Use each horizon at most once.
 
 Return STRICT JSON only — no prose, no code fences — matching exactly:
 {"summary": string, "horizon": "3-year"|"1-year"|"quarter"|"month", "layers": [{"horizon": "3-year"|"1-year"|"quarter"|"month"|"week", "label": string, "items": string[]}]}
@@ -191,14 +200,26 @@ Keep every item one short line. Be realistic and safe about pace.`;
   } catch {
     throw new Error("Couldn't read the AI plan — tap Redo to try again.");
   }
-  const layers = (parsed.layers ?? [])
-    .filter((l) => l && Array.isArray(l.items) && l.items.length > 0)
-    .map((l) => ({
-      horizon: l.horizon,
-      label: typeof l.label === "string" ? l.label : "",
-      items: l.items.filter((i) => typeof i === "string" && i.trim()).map((i) => i.trim()),
-    }))
-    .sort((a, b) => HORIZON_ORDER.indexOf(a.horizon) - HORIZON_ORDER.indexOf(b.horizon));
+  // Merge any duplicate horizons into one layer (the model sometimes splits them).
+  const byHorizon = new Map<GoalHorizon, GoalLayer>();
+  for (const l of parsed.layers ?? []) {
+    if (!l || !HORIZON_ORDER.includes(l.horizon) || !Array.isArray(l.items)) continue;
+    const items = l.items.filter((i) => typeof i === "string" && i.trim()).map((i) => i.trim());
+    if (items.length === 0) continue;
+    const existing = byHorizon.get(l.horizon);
+    if (existing) {
+      existing.items.push(...items);
+    } else {
+      byHorizon.set(l.horizon, {
+        horizon: l.horizon,
+        label: typeof l.label === "string" ? l.label : "",
+        items,
+      });
+    }
+  }
+  const layers = [...byHorizon.values()].sort(
+    (a, b) => HORIZON_ORDER.indexOf(a.horizon) - HORIZON_ORDER.indexOf(b.horizon)
+  );
   if (layers.length === 0) throw new Error("The AI plan came back empty — tap Redo.");
   const topHorizon = layers.find((l) => l.horizon !== "week")?.horizon ?? parsed.horizon;
   return {

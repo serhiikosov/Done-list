@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus, X, Sparkles, RefreshCw, Trash2, Target, Check, ChevronRight } from "lucide-react";
-import type { Goal, GoalHorizon, Entry } from "../types";
+import type { Goal, GoalHorizon, GoalPace, Entry } from "../types";
 import { aiBreakdownGoal } from "../lib/ai";
 import { useScrollLock } from "../hooks/useScrollLock";
 import type { NewGoal } from "../hooks/useGoals";
@@ -44,6 +44,7 @@ export function GoalsView({
 }: Props) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [autoRunId, setAutoRunId] = useState<string | null>(null);
   const selected = goals.find((g) => g.id === selectedId) ?? null;
 
   return (
@@ -123,6 +124,7 @@ export function GoalsView({
           onSave={(g) => {
             const created = onAdd(g);
             setComposerOpen(false);
+            setAutoRunId(created.id);
             setSelectedId(created.id);
           }}
         />
@@ -135,7 +137,11 @@ export function GoalsView({
           addedActions={entries
             .filter((e) => e.goalId === selected.id)
             .map((e) => e.text)}
-          onClose={() => setSelectedId(null)}
+          autoRun={autoRunId === selected.id}
+          onClose={() => {
+            setAutoRunId(null);
+            setSelectedId(null);
+          }}
           onUpdate={onUpdate}
           onRemove={(id) => {
             onRemove(id);
@@ -253,6 +259,7 @@ function GoalDetailSheet({
   goal,
   otherGoals,
   addedActions,
+  autoRun,
   onClose,
   onUpdate,
   onRemove,
@@ -263,6 +270,7 @@ function GoalDetailSheet({
   goal: Goal;
   otherGoals: Goal[];
   addedActions: string[];
+  autoRun: boolean;
   onClose: () => void;
   onUpdate: (id: string, patch: Partial<Goal>) => void;
   onRemove: (id: string) => void;
@@ -273,7 +281,9 @@ function GoalDetailSheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<GoalHorizon | null>(null);
+  const ranRef = useRef(false);
   useScrollLock(true);
+  const pace = goal.pace ?? "balanced";
 
   const layers = goal.layers;
   const activeHorizon =
@@ -282,19 +292,21 @@ function GoalDetailSheet({
       : layers[layers.length - 1]?.horizon;
   const activeLayer = layers.find((l) => l.horizon === activeHorizon);
 
-  const breakdown = async () => {
+  const breakdown = async (over?: Partial<Goal>) => {
+    const g = { ...goal, ...over };
     setLoading(true);
     setError(null);
     try {
       const r = await aiBreakdownGoal(
-        goal,
-        otherGoals.map((g) => ({ title: g.title, horizon: g.horizon }))
+        g,
+        otherGoals.map((o) => ({ title: o.title, horizon: o.horizon }))
       );
       onUpdate(goal.id, {
         summary: r.summary,
         layers: r.layers,
-        horizon: r.horizon ?? goal.horizon,
+        horizon: r.horizon ?? g.horizon,
         auto: false,
+        ...over,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -303,7 +315,21 @@ function GoalDetailSheet({
     }
   };
 
+  // Auto-generate right after the goal is created (skip the extra tap).
+  useEffect(() => {
+    if (autoRun && !ranRef.current && goal.layers.length === 0) {
+      ranRef.current = true;
+      breakdown();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
+
   const needsKey = error?.includes("API key");
+  const PACES: { id: GoalPace; label: string }[] = [
+    { id: "chill", label: "Chill" },
+    { id: "balanced", label: "Balanced" },
+    { id: "intense", label: "Intense" },
+  ];
 
   return (
     <Overlay onClose={onClose}>
@@ -344,7 +370,7 @@ function GoalDetailSheet({
                   </p>
                 )}
                 <button
-                  onClick={needsKey ? onOpenSettings : breakdown}
+                  onClick={needsKey ? onOpenSettings : () => breakdown()}
                   className="ring-focus tap inline-flex h-11 items-center gap-1.5 rounded-full px-5 text-sm font-semibold text-[var(--accent-fg)]"
                   style={{ background: "var(--accent)" }}
                 >
@@ -355,6 +381,31 @@ function GoalDetailSheet({
           </div>
         ) : (
           <>
+            {/* Pace control — replans with the chosen intensity */}
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-faint">Pace</span>
+              <div
+                className="flex gap-0.5 rounded-lg p-0.5"
+                style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+              >
+                {PACES.map((p) => (
+                  <button
+                    key={p.id}
+                    disabled={loading}
+                    onClick={() => pace !== p.id && breakdown({ pace: p.id })}
+                    className="ring-focus tap rounded-md px-2.5 py-1 text-[12px] font-medium disabled:opacity-50"
+                    style={{
+                      background: pace === p.id ? "var(--bg-elevated)" : "transparent",
+                      color: pace === p.id ? "var(--text)" : "var(--text-muted)",
+                      boxShadow: pace === p.id ? "var(--shadow)" : "none",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              {loading && <RefreshCw size={14} className="animate-spin text-faint" />}
+            </div>
             {goal.summary && (
               <p className="mb-4 text-[14px] leading-relaxed text-muted">{goal.summary}</p>
             )}
@@ -436,7 +487,7 @@ function GoalDetailSheet({
         </button>
         {layers.length > 0 && (
           <button
-            onClick={breakdown}
+            onClick={() => breakdown()}
             disabled={loading}
             className="ring-focus tap inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[15px] font-medium"
             style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
