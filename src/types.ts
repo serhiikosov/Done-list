@@ -52,6 +52,8 @@ export interface Goal {
   layers: GoalLayer[];
   /** Weekly action texts already pushed to Today (so they aren't re-added). */
   added?: string[];
+  /** Milestone/action texts marked complete (tracking progress per horizon). */
+  done?: string[];
   createdAt: number;
   updatedAt: number;
   deleted?: boolean;

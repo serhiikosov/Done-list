@@ -431,10 +431,34 @@ function GoalDetailSheet({
               ))}
             </div>
 
-            {activeLayer?.label && (
-              <p className="mb-3 text-[15px] font-medium" style={{ color: "var(--accent)" }}>
-                {activeLayer.label}
-              </p>
+            {activeLayer && (
+              <div className="mb-3">
+                {activeLayer.label && (
+                  <p className="text-[15px] font-medium" style={{ color: "var(--accent)" }}>
+                    {activeLayer.label}
+                  </p>
+                )}
+                {(() => {
+                  const total = activeLayer.items.length;
+                  const done = activeLayer.items.filter((i) => goal.done?.includes(i)).length;
+                  return (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div
+                        className="h-1.5 flex-1 overflow-hidden rounded-full"
+                        style={{ background: "var(--bg-subtle)" }}
+                      >
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${total ? (done / total) * 100 : 0}%`, background: "var(--done)" }}
+                        />
+                      </div>
+                      <span className="text-[12px] tabular-nums text-faint">
+                        {done}/{total}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
             )}
 
             <div
@@ -444,17 +468,40 @@ function GoalDetailSheet({
               {activeLayer?.items.map((item, i) => {
                 const isWeek = activeHorizon === "week";
                 const isAdded = addedActions.includes(item);
+                const isDone = goal.done?.includes(item) ?? false;
+                const toggleDone = () =>
+                  onUpdate(goal.id, {
+                    done: isDone
+                      ? (goal.done ?? []).filter((d) => d !== item)
+                      : [...(goal.done ?? []), item],
+                  });
                 return (
                   <div
                     key={`${activeHorizon}-${i}`}
-                    className="flex items-start gap-3 px-4 py-3"
+                    className="flex items-center gap-3 px-4 py-3"
                     style={i > 0 ? { borderTop: "1px solid var(--border)" } : undefined}
                   >
+                    <button
+                      onClick={toggleDone}
+                      aria-label={isDone ? "Mark not done" : "Mark done"}
+                      className="ring-focus tap grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border-2 transition-all"
+                      style={{
+                        background: isDone ? "var(--done)" : "transparent",
+                        borderColor: isDone ? "var(--done)" : "var(--border-strong)",
+                      }}
+                    >
+                      {isDone && <Check size={13} strokeWidth={3} color="#fff" />}
+                    </button>
                     <span
-                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ background: "var(--text-faint)" }}
-                    />
-                    <span className="min-w-0 flex-1 text-[16px] leading-snug">{item}</span>
+                      className="min-w-0 flex-1 text-[16px] leading-snug"
+                      style={
+                        isDone
+                          ? { color: "var(--text-faint)", textDecoration: "line-through" }
+                          : undefined
+                      }
+                    >
+                      {item}
+                    </span>
                     {isWeek && (
                       <button
                         onClick={() => (isAdded ? onRemoveAction(goal, item) : onAddAction(goal, item))}
