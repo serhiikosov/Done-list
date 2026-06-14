@@ -366,6 +366,7 @@ function GoalDetailSheet({
         layers: newLayers,
         done: (goal.done ?? []).filter((d) => stillPlanned.has(d)),
         added: [],
+        weekPlannedAt: Date.now(),
       });
       setNextWeekNote(r.note || "New week planned.");
       setTimeout(() => setNextWeekNote(null), 4000);
@@ -398,6 +399,7 @@ function GoalDetailSheet({
         summary: r.summary,
         layers: r.layers,
         horizon: r.horizon ?? g.horizon,
+        weekPlannedAt: Date.now(),
         ...over,
       });
     } catch (e) {

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Check, Inbox, RotateCcw, Sparkles } from "lucide-react";
-import type { Entry, Grouping } from "../types";
+import { ChevronLeft, ChevronRight, Copy, Check, Inbox, RotateCcw, Sparkles, Target } from "lucide-react";
+import type { Entry, Goal, Grouping, GoalHorizon } from "../types";
 import {
   periodStart,
   periodEnd,
@@ -25,6 +25,8 @@ interface Props {
   onAIReview: (label: string, doneItems: Entry[]) => void;
   goalTitleOf?: (goalId: string) => string | undefined;
   onOpenGoal?: (goalId: string) => void;
+  goals?: Goal[];
+  onToggleGoalItem?: (goalId: string, item: string) => void;
 }
 
 const GROUPS: { id: Grouping; label: string }[] = [
@@ -45,6 +47,8 @@ export function PeriodView({
   onAIReview,
   goalTitleOf,
   onOpenGoal,
+  goals,
+  onToggleGoalItem,
 }: Props) {
   const entryGoal = (e: Entry) => {
     if (!e.goalId) return undefined;
@@ -93,6 +97,29 @@ export function PeriodView({
     }
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [items, grouping]);
+
+  // Auto-surface goal items for the matching horizon, but only in the
+  // current period (these items aren't tied to a specific past/future period).
+  const goalHorizon: GoalHorizon | null =
+    grouping === "week" ? "week" : grouping === "month" ? "month" : grouping === "year" ? "1-year" : null;
+  const entryGoalKeys = new Set(items.filter((e) => e.goalId).map((e) => `${e.goalId}|${e.text}`));
+  const goalSections =
+    goalHorizon && !nextAllowed && goals
+      ? goals
+          .map((g) => {
+            const layer = g.layers.find((l) => l.horizon === goalHorizon);
+            if (!layer) return null;
+            const visible = layer.items.filter((it) => !entryGoalKeys.has(`${g.id}|${it}`));
+            if (visible.length === 0) return null;
+            const stale =
+              goalHorizon === "week" &&
+              g.weekPlannedAt != null &&
+              Date.now() - g.weekPlannedAt > 7 * 86400000 &&
+              layer.items.some((it) => !(g.done?.includes(it)));
+            return { goal: g, items: visible, stale };
+          })
+          .filter((x): x is { goal: Goal; items: string[]; stale: boolean } => x !== null)
+      : [];
 
   const go = (dir: 1 | -1) => {
     if (dir === 1 && !nextAllowed) return;
@@ -245,7 +272,71 @@ export function PeriodView({
             transition: animating ? "transform 0.24s cubic-bezier(0.2,0.7,0.2,1)" : "none",
           }}
         >
-        {items.length === 0 ? (
+        {/* Auto-surfaced goal items for this horizon */}
+        {goalSections.length > 0 && (
+          <div className="mb-6 flex flex-col gap-4">
+            <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
+              From your goals
+            </div>
+            {goalSections.map(({ goal, items: gItems, stale }) => (
+              <section key={goal.id}>
+                <button
+                  onClick={() => onOpenGoal?.(goal.id)}
+                  className="ring-focus mb-2 flex items-center gap-1.5 px-1 text-[14px] font-semibold"
+                  style={{ color: "var(--accent)" }}
+                >
+                  <Target size={14} />
+                  <span className="truncate">{goal.title}</span>
+                  <ChevronRight size={14} className="text-faint" />
+                </button>
+                {stale && (
+                  <button
+                    onClick={() => onOpenGoal?.(goal.id)}
+                    className="ring-focus mb-2 block w-full rounded-xl px-3 py-2 text-left text-[12px]"
+                    style={{ background: "var(--planned-soft)", color: "var(--planned)" }}
+                  >
+                    This week's plan is over a week old — tap to plan next week.
+                  </button>
+                )}
+                <div
+                  className="overflow-hidden rounded-2xl"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+                >
+                  {gItems.map((it, i) => {
+                    const isDone = goal.done?.includes(it) ?? false;
+                    return (
+                      <div
+                        key={it}
+                        className="flex items-center gap-3 px-4 py-3"
+                        style={i > 0 ? { borderTop: "1px solid var(--border)" } : undefined}
+                      >
+                        <button
+                          onClick={() => onToggleGoalItem?.(goal.id, it)}
+                          aria-label={isDone ? "Mark not done" : "Mark done"}
+                          className="ring-focus tap grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border-2 transition-all"
+                          style={{
+                            background: isDone ? "var(--done)" : "transparent",
+                            borderColor: isDone ? "var(--done)" : "var(--border-strong)",
+                          }}
+                        >
+                          {isDone && <Check size={13} strokeWidth={3} color="#fff" />}
+                        </button>
+                        <span
+                          className="min-w-0 flex-1 text-[16px] leading-snug"
+                          style={isDone ? { color: "var(--text-faint)", textDecoration: "line-through" } : undefined}
+                        >
+                          {it}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {items.length === 0 && goalSections.length === 0 ? (
           <div className="mt-10 flex flex-col items-center text-center">
             <span
               className="grid h-12 w-12 place-items-center rounded-full"
@@ -256,7 +347,7 @@ export function PeriodView({
             <p className="mt-4 text-[15px] font-medium">Nothing for {label.title.toLowerCase()}</p>
             <p className="mt-1 text-sm text-muted">Swipe to move between periods.</p>
           </div>
-        ) : dayGroups ? (
+        ) : items.length === 0 ? null : dayGroups ? (
           <div className="flex flex-col gap-6">
             {dayGroups.map(([day, dayItems]) => (
               <section key={day}>

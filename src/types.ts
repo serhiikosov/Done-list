@@ -61,6 +61,8 @@ export interface Goal {
   layers: GoalLayer[];
   /** Weekly action texts already pushed to Today (so they aren't re-added). */
   added?: string[];
+  /** When the current week layer was generated (for the stale-week nudge). */
+  weekPlannedAt?: number;
   /** Milestone/action texts marked complete (tracking progress per horizon). */
   done?: string[];
   createdAt: number;

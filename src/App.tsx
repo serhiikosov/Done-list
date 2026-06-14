@@ -102,6 +102,14 @@ export default function App() {
     return Math.round((done / items.length) * 100);
   };
   const goalsById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
+  const toggleGoalItem = (goalId: string, item: string) => {
+    const g = goals.find((x) => x.id === goalId);
+    if (!g) return;
+    const has = g.done?.includes(item) ?? false;
+    updateGoal(goalId, {
+      done: has ? (g.done ?? []).filter((d) => d !== item) : [...(g.done ?? []), item],
+    });
+  };
   const [focusGoalId, setFocusGoalId] = useState<string | null>(null);
   const openGoal = (goalId: string) => {
     setView("goals");
@@ -443,6 +451,8 @@ export default function App() {
                   onAIReview={openAIReview}
                   goalTitleOf={(gid) => goalsById.get(gid)?.title}
                   onOpenGoal={openGoal}
+                  goals={goals}
+                  onToggleGoalItem={toggleGoalItem}
                 />
               </div>
             )}
