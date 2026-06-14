@@ -179,7 +179,8 @@ Return STRICT JSON only — no prose, no code fences — matching exactly:
 Include layers for ${span} (largest to smallest, always ending with "week").
 "label" is a short milestone title for that horizon (e.g. "By end of Q3: …").
 The "week" layer must have 3-6 concrete actions I can start this week.
-Keep every item one short line. Be realistic and safe about pace.`;
+Keep every item one short line. Be realistic and safe about pace.
+Write the "summary", every "label" and every "item" in the SAME language as the goal title and details above.`;
 
   const raw = await call(
     "You are a pragmatic goal-planning coach. You decompose goals into nested, realistic milestones across time horizons and concrete weekly actions. Output STRICT JSON only.",
@@ -244,7 +245,7 @@ export async function aiReview(
     : "";
   const prompt = `Period: ${label}\n\nEverything I shipped:\n${list}${goalsBlock}\n\nWrite my review.`;
   return call(
-    "You write a person's period review for a 1:1 or self-review. Group shipped work under short **bold** theme headers with '- ' bullets. If goals are provided, add a **Goals** section noting which goals this period's work moved forward and which were neglected, then a **Focus next** section with 2-3 concrete suggested actions for the next period that would most advance the goals. Be specific and concise. Start directly — no preamble.",
+    "You write a person's period review for a 1:1 or self-review. Group shipped work under short **bold** theme headers with '- ' bullets. If goals are provided, add a **Goals** section noting which goals this period's work moved forward and which were neglected, then a **Focus next** section with 2-3 concrete suggested actions for the next period that would most advance the goals. Be specific and concise. Start directly — no preamble. Write the whole review in the same language as the shipped items above.",
     prompt
   );
 }
