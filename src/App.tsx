@@ -190,9 +190,14 @@ export default function App() {
     prevStreak.current = stats.streak;
   }, [stats.streak]);
 
-  const handleAddGoalAction = (_goal: Goal, action: string) => {
-    add({ text: action, status: "planned", date: todayKey() });
+  const handleAddGoalAction = (goal: Goal, action: string) => {
+    add({ text: action, status: "planned", date: todayKey(), goalId: goal.id });
     flash("Added to today →");
+  };
+
+  const handleRemoveGoalAction = (goal: Goal, action: string) => {
+    const e = entries.find((x) => x.goalId === goal.id && x.text === action);
+    if (e) remove(e.id);
   };
 
   const openAIStandup = () =>
@@ -371,10 +376,12 @@ export default function App() {
             ) : view === "goals" ? (
               <GoalsView
                 goals={goals}
+                entries={entries}
                 onAdd={addGoal}
                 onUpdate={updateGoal}
                 onRemove={removeGoal}
                 onAddAction={handleAddGoalAction}
+                onRemoveAction={handleRemoveGoalAction}
                 onOpenSettings={() => setSettingsOpen(true)}
               />
             ) : (

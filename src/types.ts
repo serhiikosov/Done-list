@@ -12,6 +12,8 @@ export interface Entry {
   status: EntryStatus;
   /** Optional free-form tag, e.g. a project or area. */
   tag?: string;
+  /** Links this entry to the goal action it came from (for toggle/sync). */
+  goalId?: string;
   createdAt: number;
   updatedAt: number;
   /** Soft-delete tombstone so deletions propagate across synced devices. */

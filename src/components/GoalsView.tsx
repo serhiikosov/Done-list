@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, Sparkles, RefreshCw, Trash2, Target, Check, ChevronRight } from "lucide-react";
-import type { Goal, GoalHorizon } from "../types";
+import type { Goal, GoalHorizon, Entry } from "../types";
 import { aiBreakdownGoal } from "../lib/ai";
 import { useScrollLock } from "../hooks/useScrollLock";
 import type { NewGoal } from "../hooks/useGoals";
 
 interface Props {
   goals: Goal[];
+  entries: Entry[];
   onAdd: (g: NewGoal) => Goal;
   onUpdate: (id: string, patch: Partial<Goal>) => void;
   onRemove: (id: string) => void;
   onAddAction: (goal: Goal, action: string) => void;
+  onRemoveAction: (goal: Goal, action: string) => void;
   onOpenSettings: () => void;
 }
 
@@ -29,7 +31,16 @@ const HORIZON_OPTIONS: { id: GoalHorizon; label: string }[] = [
   { id: "3-year", label: "3 years" },
 ];
 
-export function GoalsView({ goals, onAdd, onUpdate, onRemove, onAddAction, onOpenSettings }: Props) {
+export function GoalsView({
+  goals,
+  entries,
+  onAdd,
+  onUpdate,
+  onRemove,
+  onAddAction,
+  onRemoveAction,
+  onOpenSettings,
+}: Props) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = goals.find((g) => g.id === selectedId) ?? null;
@@ -120,6 +131,9 @@ export function GoalsView({ goals, onAdd, onUpdate, onRemove, onAddAction, onOpe
         <GoalDetailSheet
           goal={selected}
           otherGoals={goals.filter((g) => g.id !== selected.id)}
+          addedActions={entries
+            .filter((e) => e.goalId === selected.id)
+            .map((e) => e.text)}
           onClose={() => setSelectedId(null)}
           onUpdate={onUpdate}
           onRemove={(id) => {
@@ -127,6 +141,7 @@ export function GoalsView({ goals, onAdd, onUpdate, onRemove, onAddAction, onOpe
             setSelectedId(null);
           }}
           onAddAction={onAddAction}
+          onRemoveAction={onRemoveAction}
           onOpenSettings={onOpenSettings}
         />
       )}
@@ -236,18 +251,22 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
 function GoalDetailSheet({
   goal,
   otherGoals,
+  addedActions,
   onClose,
   onUpdate,
   onRemove,
   onAddAction,
+  onRemoveAction,
   onOpenSettings,
 }: {
   goal: Goal;
   otherGoals: Goal[];
+  addedActions: string[];
   onClose: () => void;
   onUpdate: (id: string, patch: Partial<Goal>) => void;
   onRemove: (id: string) => void;
   onAddAction: (goal: Goal, action: string) => void;
+  onRemoveAction: (goal: Goal, action: string) => void;
   onOpenSettings: () => void;
 }) {
   const [loading, setLoading] = useState(false);
@@ -371,7 +390,7 @@ function GoalDetailSheet({
             >
               {activeLayer?.items.map((item, i) => {
                 const isWeek = activeHorizon === "week";
-                const isAdded = goal.added?.includes(item) ?? false;
+                const isAdded = addedActions.includes(item);
                 return (
                   <div
                     key={`${activeHorizon}-${i}`}
@@ -385,17 +404,13 @@ function GoalDetailSheet({
                     <span className="min-w-0 flex-1 text-[16px] leading-snug">{item}</span>
                     {isWeek && (
                       <button
-                        onClick={() => {
-                          if (isAdded) return;
-                          onAddAction(goal, item);
-                          onUpdate(goal.id, { added: [...(goal.added ?? []), item] });
-                        }}
-                        disabled={isAdded}
+                        onClick={() => (isAdded ? onRemoveAction(goal, item) : onAddAction(goal, item))}
                         className="ring-focus tap inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium"
                         style={{
                           background: isAdded ? "var(--done-soft)" : "var(--accent-soft)",
                           color: isAdded ? "var(--done)" : "var(--accent)",
                         }}
+                        title={isAdded ? "Remove from Today" : "Add to Today"}
                       >
                         {isAdded ? <Check size={13} /> : <Plus size={13} />}
                         {isAdded ? "Added" : "Today"}

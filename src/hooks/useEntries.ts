@@ -8,6 +8,7 @@ export interface NewEntryInput {
   status: EntryStatus;
   date?: string;
   tag?: string;
+  goalId?: string;
 }
 
 export function useEntries() {
@@ -44,6 +45,7 @@ export function useEntries() {
       date: input.date ?? todayKey(),
       status: input.status,
       tag: input.tag?.trim() || undefined,
+      goalId: input.goalId,
       createdAt: now,
       updatedAt: now,
     };
