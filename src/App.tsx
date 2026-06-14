@@ -457,6 +457,9 @@ export default function App() {
       />
       <EntrySheet
         entry={editingEntry}
+        goals={goals}
+        progressOf={goalProgress}
+        onOpenGoal={openGoal}
         onClose={() => setEditingEntry(null)}
         onUpdate={update}
         onRemove={handleRemove}
