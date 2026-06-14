@@ -1,4 +1,4 @@
-import type { Entry } from "../types";
+import type { Entry, Goal, GoalLayer, GoalHorizon } from "../types";
 import type { StandupData } from "./standup";
 
 export type AIProvider = "gemini" | "claude";
@@ -135,6 +135,55 @@ Write what I should say at standup.`;
     "You turn a developer's raw done/planned notes into a natural, confident, spoken standup update in the first person. Two short paragraphs: (1) what I did since yesterday, (2) what I'm focusing on today, and call out any blocker. Be concise and human — no preamble, no markdown headers, no bullet lists.",
     prompt
   );
+}
+
+const HORIZON_ORDER: GoalHorizon[] = ["3-year", "1-year", "quarter", "month", "week"];
+
+/** Ask the AI to decompose a goal into nested milestones + weekly actions. */
+export async function aiBreakdownGoal(goal: Goal): Promise<{ summary: string; layers: GoalLayer[] }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const span = HORIZON_ORDER.slice(HORIZON_ORDER.indexOf(goal.horizon)).join(", ");
+  const prompt = `Goal: ${goal.title}
+${goal.detail ? `Details: ${goal.detail}` : ""}
+Target horizon: ${goal.horizon}
+Today: ${today}
+
+Break this into a realistic, safe hierarchical plan. Return STRICT JSON only — no prose, no code fences — matching exactly:
+{"summary": string, "layers": [{"horizon": "3-year"|"1-year"|"quarter"|"month"|"week", "label": string, "items": string[]}]}
+Include only these horizons (largest to smallest): ${span}.
+"label" is a short milestone title for that horizon (e.g. "By end of Q3: …").
+The "week" layer must have 3-6 concrete actions I can start this week.
+Keep every item one short line. Be realistic about pace and safe (e.g. healthy rates).`;
+
+  const raw = await call(
+    "You are a pragmatic goal-planning coach. You decompose goals into nested, realistic milestones across time horizons and concrete weekly actions. Output STRICT JSON only.",
+    prompt
+  );
+
+  let json = raw.trim();
+  // Strip accidental code fences.
+  json = json.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  // Grab the outermost JSON object if the model added stray text.
+  const first = json.indexOf("{");
+  const last = json.lastIndexOf("}");
+  if (first > 0 || last < json.length - 1) json = json.slice(first, last + 1);
+
+  let parsed: { summary?: string; layers?: GoalLayer[] };
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error("Couldn't read the AI plan — tap Redo to try again.");
+  }
+  const layers = (parsed.layers ?? [])
+    .filter((l) => l && Array.isArray(l.items) && l.items.length > 0)
+    .map((l) => ({
+      horizon: l.horizon,
+      label: typeof l.label === "string" ? l.label : "",
+      items: l.items.filter((i) => typeof i === "string" && i.trim()).map((i) => i.trim()),
+    }))
+    .sort((a, b) => HORIZON_ORDER.indexOf(a.horizon) - HORIZON_ORDER.indexOf(b.horizon));
+  if (layers.length === 0) throw new Error("The AI plan came back empty — tap Redo.");
+  return { summary: typeof parsed.summary === "string" ? parsed.summary : "", layers };
 }
 
 export async function aiReview(label: string, doneItems: Entry[]): Promise<string> {

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, Settings, Sun, Moon, Plus, Check } from "lucide-react";
-import type { Grouping, Entry } from "./types";
+import type { Grouping, Entry, Goal } from "./types";
 import { useEntries, type NewEntryInput } from "./hooks/useEntries";
+import { useGoals } from "./hooks/useGoals";
+import { GoalsView } from "./components/GoalsView";
 import { useSync } from "./hooks/useSync";
 import { SettingsModal } from "./components/SettingsModal";
 import { EntrySheet } from "./components/EntrySheet";
@@ -42,6 +44,7 @@ export default function App() {
     useEntries();
   const { theme, toggle } = useTheme();
   const sync = useSync(all, mergeRemote);
+  const { goals, add: addGoal, update: updateGoal, remove: removeGoal } = useGoals();
 
   const [view, setView] = useState<View>("standup");
   const [grouping, setGrouping] = useState<Grouping>("day");
@@ -186,6 +189,11 @@ export default function App() {
     }
     prevStreak.current = stats.streak;
   }, [stats.streak]);
+
+  const handleAddGoalAction = (_goal: Goal, action: string) => {
+    add({ text: action, status: "planned", date: todayKey() });
+    flash("Added to today →");
+  };
 
   const openAIStandup = () =>
     setAiSheet({ title: "AI standup", generate: () => aiStandup(buildStandup(entries)) });
@@ -359,6 +367,15 @@ export default function App() {
                 onRemove={handleRemove}
                 onCapture={() => setComposerOpen(true)}
                 onAIScript={openAIStandup}
+              />
+            ) : view === "goals" ? (
+              <GoalsView
+                goals={goals}
+                onAdd={addGoal}
+                onUpdate={updateGoal}
+                onRemove={removeGoal}
+                onAddAction={handleAddGoalAction}
+                onOpenSettings={() => setSettingsOpen(true)}
               />
             ) : (
               <div>

@@ -23,3 +23,26 @@ export interface AppState {
   /** Schema version, for safe future migrations. */
   version: number;
 }
+
+export type GoalHorizon = "3-year" | "1-year" | "quarter" | "month" | "week";
+
+export interface GoalLayer {
+  horizon: GoalHorizon;
+  label: string;
+  items: string[];
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  /** Free context, e.g. "gain 6kg, currently 72kg". */
+  detail?: string;
+  /** The furthest horizon this goal spans. */
+  horizon: GoalHorizon;
+  /** AI-generated, user-editable breakdown. */
+  summary?: string;
+  layers: GoalLayer[];
+  createdAt: number;
+  updatedAt: number;
+  deleted?: boolean;
+}

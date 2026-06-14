@@ -12,11 +12,12 @@ import {
   Upload,
   Flame,
   Settings,
+  Target,
 } from "lucide-react";
 import type { Grouping } from "../types";
 import type { SyncStatus } from "../hooks/useSync";
 
-export type View = "timeline" | "standup";
+export type View = "timeline" | "standup" | "goals";
 
 interface Props {
   view: View;
@@ -122,6 +123,13 @@ export function Sidebar(props: Props) {
           icon={ListChecks}
         >
           Timeline
+        </NavButton>
+        <NavButton
+          active={props.view === "goals"}
+          onClick={() => props.setView("goals")}
+          icon={Target}
+        >
+          Goals
         </NavButton>
       </nav>
 
