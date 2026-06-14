@@ -139,21 +139,38 @@ Write what I should say at standup.`;
 
 const HORIZON_ORDER: GoalHorizon[] = ["3-year", "1-year", "quarter", "month", "week"];
 
-/** Ask the AI to decompose a goal into nested milestones + weekly actions. */
-export async function aiBreakdownGoal(goal: Goal): Promise<{ summary: string; layers: GoalLayer[] }> {
+/** Ask the AI to decompose a goal into nested milestones + weekly actions.
+ *  When `goal.auto` is set, the AI also picks the realistic top horizon. */
+export async function aiBreakdownGoal(
+  goal: Goal,
+  otherGoals: { title: string; horizon: GoalHorizon }[] = []
+): Promise<{ summary: string; layers: GoalLayer[]; horizon?: GoalHorizon }> {
   const today = new Date().toISOString().slice(0, 10);
-  const span = HORIZON_ORDER.slice(HORIZON_ORDER.indexOf(goal.horizon)).join(", ");
+  const context = otherGoals.length
+    ? `\nMy other active goals (consider my overall load when pacing this):\n${otherGoals
+        .map((g) => `- ${g.title} (${g.horizon})`)
+        .join("\n")}`
+    : "";
+
+  const horizonInstruction = goal.auto
+    ? `Decide the realistic, HEALTHY timeframe yourself — pick the largest horizon (one of 3-year, 1-year, quarter, month) that fits a safe pace for this goal, and set "horizon" to it. In "summary", briefly state the timeframe you chose and why (e.g. healthy weight gain ~0.25–0.5 kg/week).`
+    : `Plan should span up to "${goal.horizon}". Set "horizon" to "${goal.horizon}".`;
+  const span = goal.auto
+    ? "the horizons from your chosen top horizon down to week"
+    : HORIZON_ORDER.slice(HORIZON_ORDER.indexOf(goal.horizon)).join(", ");
+
   const prompt = `Goal: ${goal.title}
 ${goal.detail ? `Details: ${goal.detail}` : ""}
-Target horizon: ${goal.horizon}
-Today: ${today}
+Today: ${today}${context}
 
-Break this into a realistic, safe hierarchical plan. Return STRICT JSON only — no prose, no code fences — matching exactly:
-{"summary": string, "layers": [{"horizon": "3-year"|"1-year"|"quarter"|"month"|"week", "label": string, "items": string[]}]}
-Include only these horizons (largest to smallest): ${span}.
+${horizonInstruction}
+
+Return STRICT JSON only — no prose, no code fences — matching exactly:
+{"summary": string, "horizon": "3-year"|"1-year"|"quarter"|"month", "layers": [{"horizon": "3-year"|"1-year"|"quarter"|"month"|"week", "label": string, "items": string[]}]}
+Include layers for ${span} (largest to smallest, always ending with "week").
 "label" is a short milestone title for that horizon (e.g. "By end of Q3: …").
 The "week" layer must have 3-6 concrete actions I can start this week.
-Keep every item one short line. Be realistic about pace and safe (e.g. healthy rates).`;
+Keep every item one short line. Be realistic and safe about pace.`;
 
   const raw = await call(
     "You are a pragmatic goal-planning coach. You decompose goals into nested, realistic milestones across time horizons and concrete weekly actions. Output STRICT JSON only.",
@@ -168,7 +185,7 @@ Keep every item one short line. Be realistic about pace and safe (e.g. healthy r
   const last = json.lastIndexOf("}");
   if (first > 0 || last < json.length - 1) json = json.slice(first, last + 1);
 
-  let parsed: { summary?: string; layers?: GoalLayer[] };
+  let parsed: { summary?: string; layers?: GoalLayer[]; horizon?: GoalHorizon };
   try {
     parsed = JSON.parse(json);
   } catch {
@@ -183,7 +200,14 @@ Keep every item one short line. Be realistic about pace and safe (e.g. healthy r
     }))
     .sort((a, b) => HORIZON_ORDER.indexOf(a.horizon) - HORIZON_ORDER.indexOf(b.horizon));
   if (layers.length === 0) throw new Error("The AI plan came back empty — tap Redo.");
-  return { summary: typeof parsed.summary === "string" ? parsed.summary : "", layers };
+  const topHorizon = layers.find((l) => l.horizon !== "week")?.horizon ?? parsed.horizon;
+  return {
+    summary: typeof parsed.summary === "string" ? parsed.summary : "",
+    layers,
+    horizon: HORIZON_ORDER.includes(parsed.horizon as GoalHorizon)
+      ? parsed.horizon
+      : topHorizon,
+  };
 }
 
 export async function aiReview(label: string, doneItems: Entry[]): Promise<string> {

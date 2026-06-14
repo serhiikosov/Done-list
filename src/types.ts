@@ -39,6 +39,8 @@ export interface Goal {
   detail?: string;
   /** The furthest horizon this goal spans. */
   horizon: GoalHorizon;
+  /** When true, AI picks the realistic timeframe during breakdown. */
+  auto?: boolean;
   /** AI-generated, user-editable breakdown. */
   summary?: string;
   layers: GoalLayer[];

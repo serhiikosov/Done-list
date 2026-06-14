@@ -10,18 +10,20 @@ interface Props {
 export function BottomBar({ view, setView, onCapture }: Props) {
   return (
     <>
-      {/* Floating capture button */}
-      <button
-        onClick={onCapture}
-        aria-label="Add entry"
-        className="ring-focus tap fixed bottom-24 right-5 z-40 grid h-14 w-14 place-items-center rounded-full text-[var(--accent-fg)] md:hidden"
-        style={{
-          background: "var(--accent)",
-          boxShadow: "0 8px 20px color-mix(in srgb, var(--accent) 50%, transparent)",
-        }}
-      >
-        <Plus size={28} strokeWidth={2.6} />
-      </button>
+      {/* Floating capture button — not on Goals (it has its own New) */}
+      {view !== "goals" && (
+        <button
+          onClick={onCapture}
+          aria-label="Add entry"
+          className="ring-focus tap fixed bottom-24 right-5 z-40 grid h-14 w-14 place-items-center rounded-full text-[var(--accent-fg)] md:hidden"
+          style={{
+            background: "var(--accent)",
+            boxShadow: "0 8px 20px color-mix(in srgb, var(--accent) 50%, transparent)",
+          }}
+        >
+          <Plus size={28} strokeWidth={2.6} />
+        </button>
+      )}
 
       <nav
         className="pb-safe fixed inset-x-0 bottom-0 z-30 md:hidden"

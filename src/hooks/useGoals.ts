@@ -19,6 +19,7 @@ export interface NewGoal {
   title: string;
   detail?: string;
   horizon: Goal["horizon"];
+  auto?: boolean;
 }
 
 export function useGoals() {
@@ -46,6 +47,7 @@ export function useGoals() {
       title: input.title.trim(),
       detail: input.detail?.trim() || undefined,
       horizon: input.horizon,
+      auto: input.auto,
       layers: [],
       createdAt: now,
       updatedAt: now,

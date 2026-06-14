@@ -41,13 +41,15 @@ export function GoalsView({ goals, onAdd, onUpdate, onRemove, onAddAction, onOpe
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">Goals</div>
           <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight">Where I'm headed</h1>
         </div>
-        <button
-          onClick={() => setComposerOpen(true)}
-          className="ring-focus tap inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium text-[var(--accent-fg)]"
-          style={{ background: "var(--accent)" }}
-        >
-          <Plus size={17} strokeWidth={2.6} /> New
-        </button>
+        {goals.length > 0 && (
+          <button
+            onClick={() => setComposerOpen(true)}
+            className="ring-focus tap inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium text-[var(--accent-fg)]"
+            style={{ background: "var(--accent)" }}
+          >
+            <Plus size={17} strokeWidth={2.6} /> New
+          </button>
+        )}
       </div>
 
       {goals.length === 0 ? (
@@ -117,6 +119,7 @@ export function GoalsView({ goals, onAdd, onUpdate, onRemove, onAddAction, onOpe
       {selected && (
         <GoalDetailSheet
           goal={selected}
+          otherGoals={goals.filter((g) => g.id !== selected.id)}
           onClose={() => setSelectedId(null)}
           onUpdate={onUpdate}
           onRemove={(id) => {
@@ -135,6 +138,7 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [horizon, setHorizon] = useState<GoalHorizon>("1-year");
+  const [auto, setAuto] = useState(true);
   const ref = useRef<HTMLInputElement>(null);
   useScrollLock(true);
   useEffect(() => {
@@ -163,17 +167,41 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
           style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
         />
         <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-faint">Horizon</div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-faint">Timeframe</div>
+          <button
+            onClick={() => setAuto(true)}
+            className="ring-focus tap mb-2 flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors"
+            style={{
+              background: auto ? "var(--accent-soft)" : "var(--bg-subtle)",
+              border: `1.5px solid ${auto ? "var(--accent)" : "var(--border)"}`,
+            }}
+          >
+            <span
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+              style={{ background: auto ? "var(--accent)" : "var(--bg-elevated)", color: auto ? "#fff" : "var(--text-faint)" }}
+            >
+              <Sparkles size={15} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-semibold" style={{ color: auto ? "var(--accent)" : "var(--text)" }}>
+                Let AI choose
+              </span>
+              <span className="block text-[12px] text-faint">Picks a realistic, healthy timeframe</span>
+            </span>
+          </button>
           <div className="grid grid-cols-2 gap-2">
             {HORIZON_OPTIONS.map((h) => (
               <button
                 key={h.id}
-                onClick={() => setHorizon(h.id)}
+                onClick={() => {
+                  setHorizon(h.id);
+                  setAuto(false);
+                }}
                 className="ring-focus tap rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors"
                 style={{
-                  background: horizon === h.id ? "var(--accent-soft)" : "var(--bg-subtle)",
-                  color: horizon === h.id ? "var(--accent)" : "var(--text-muted)",
-                  border: `1.5px solid ${horizon === h.id ? "var(--accent)" : "var(--border)"}`,
+                  background: !auto && horizon === h.id ? "var(--accent-soft)" : "var(--bg-subtle)",
+                  color: !auto && horizon === h.id ? "var(--accent)" : "var(--text-muted)",
+                  border: `1.5px solid ${!auto && horizon === h.id ? "var(--accent)" : "var(--border)"}`,
                 }}
               >
                 {h.label}
@@ -182,7 +210,7 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
           </div>
         </div>
         <button
-          onClick={() => title.trim() && onSave({ title, detail, horizon })}
+          onClick={() => title.trim() && onSave({ title, detail, horizon, auto })}
           disabled={!title.trim()}
           className="ring-focus tap h-12 rounded-2xl text-[15px] font-semibold text-[var(--accent-fg)] disabled:opacity-40"
           style={{ background: "var(--accent)" }}
@@ -196,6 +224,7 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
 
 function GoalDetailSheet({
   goal,
+  otherGoals,
   onClose,
   onUpdate,
   onRemove,
@@ -203,6 +232,7 @@ function GoalDetailSheet({
   onOpenSettings,
 }: {
   goal: Goal;
+  otherGoals: Goal[];
   onClose: () => void;
   onUpdate: (id: string, patch: Partial<Goal>) => void;
   onRemove: (id: string) => void;
@@ -226,8 +256,16 @@ function GoalDetailSheet({
     setLoading(true);
     setError(null);
     try {
-      const r = await aiBreakdownGoal(goal);
-      onUpdate(goal.id, { summary: r.summary, layers: r.layers });
+      const r = await aiBreakdownGoal(
+        goal,
+        otherGoals.map((g) => ({ title: g.title, horizon: g.horizon }))
+      );
+      onUpdate(goal.id, {
+        summary: r.summary,
+        layers: r.layers,
+        horizon: r.horizon ?? goal.horizon,
+        auto: false,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -287,6 +325,9 @@ function GoalDetailSheet({
           </div>
         ) : (
           <>
+            {goal.summary && (
+              <p className="mb-4 text-[14px] leading-relaxed text-muted">{goal.summary}</p>
+            )}
             {/* Horizon switcher */}
             <div
               className="mb-4 flex gap-0.5 overflow-x-auto rounded-xl p-0.5"
