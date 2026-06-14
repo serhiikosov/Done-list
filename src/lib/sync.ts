@@ -3,7 +3,7 @@ import {
   type SupabaseClient,
   type Session,
 } from "@supabase/supabase-js";
-import type { Entry } from "../types";
+import type { Entry, Goal } from "../types";
 
 const CONFIG_KEY = "done-list:supabase";
 const TABLE = "entries";
@@ -167,6 +167,58 @@ export function subscribeToChanges(
   };
 }
 
+// ── Goals (stored as JSON, since they're nested) ───────────────────
+interface GoalRow {
+  id: string;
+  user_id?: string;
+  updated_at: number;
+  deleted: boolean;
+  data: Goal;
+}
+
+export async function pullGoals(): Promise<Goal[]> {
+  const c = getClient();
+  if (!c) return [];
+  const { data, error } = await c.from("goals").select("*");
+  if (error) throw error;
+  return (data as GoalRow[]).map((r) => ({ ...r.data, deleted: !!r.deleted }));
+}
+
+export async function pushGoals(goals: Goal[], userId: string): Promise<void> {
+  const c = getClient();
+  if (!c || goals.length === 0) return;
+  const rows = goals.map((g) => ({
+    id: g.id,
+    user_id: userId,
+    updated_at: g.updatedAt,
+    deleted: !!g.deleted,
+    data: g,
+  }));
+  for (let i = 0; i < rows.length; i += 200) {
+    const { error } = await c.from("goals").upsert(rows.slice(i, i + 200), { onConflict: "id" });
+    if (error) throw error;
+  }
+}
+
+export function subscribeToGoalChanges(userId: string, onGoal: (goal: Goal) => void): () => void {
+  const c = getClient();
+  if (!c) return () => {};
+  const channel = c
+    .channel("goals-sync")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "goals", filter: `user_id=eq.${userId}` },
+      (payload) => {
+        const row = payload.new as GoalRow;
+        if (row && row.data) onGoal({ ...row.data, deleted: !!row.deleted });
+      }
+    )
+    .subscribe();
+  return () => {
+    c.removeChannel(channel);
+  };
+}
+
 /** The SQL a user runs once in the Supabase SQL editor to set things up.
  *  Written to be idempotent — safe to run more than once. */
 export const SETUP_SQL = `create table if not exists entries (
@@ -196,5 +248,31 @@ begin
     where pubname = 'supabase_realtime' and tablename = 'entries'
   ) then
     alter publication supabase_realtime add table entries;
+  end if;
+end $$;
+
+create table if not exists goals (
+  id text primary key,
+  user_id uuid not null default auth.uid(),
+  data jsonb not null,
+  updated_at bigint not null,
+  deleted boolean not null default false
+);
+
+alter table goals enable row level security;
+
+drop policy if exists "Users manage their own goals" on goals;
+create policy "Users manage their own goals"
+  on goals for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'goals'
+  ) then
+    alter publication supabase_realtime add table goals;
   end if;
 end $$;`;

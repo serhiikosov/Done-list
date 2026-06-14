@@ -178,7 +178,7 @@ Return STRICT JSON only — no prose, no code fences — matching exactly:
 {"summary": string, "horizon": "3-year"|"1-year"|"quarter"|"month", "layers": [{"horizon": "3-year"|"1-year"|"quarter"|"month"|"week", "label": string, "items": string[]}]}
 Include layers for ${span} (largest to smallest, always ending with "week").
 "label" is a short milestone title for that horizon (e.g. "By end of Q3: …").
-The "week" layer must have 3-6 concrete actions I can start this week.
+The "week" layer must have 3-6 very concrete actions for THIS week: each starts with a verb, is ≤ 8 words, is doable in a day or two, and contains NO dates inside the text.
 Keep every item one short line. Be realistic and safe about pace.
 Write the "summary", every "label" and every "item" in the SAME language as the goal title and details above.`;
 
@@ -230,6 +230,43 @@ Write the "summary", every "label" and every "item" in the SAME language as the 
       ? parsed.horizon
       : topHorizon,
   };
+}
+
+/** Generate the NEXT week's actions, rolling the plan forward given progress. */
+export async function aiNextWeek(
+  goal: Goal,
+  doneTexts: string[]
+): Promise<{ items: string[]; note: string }> {
+  const layerLine = (h: GoalHorizon) =>
+    goal.layers.find((l) => l.horizon === h)?.items.map((i) => `- ${i}`).join("\n");
+  const month = layerLine("month");
+  const quarter = layerLine("quarter");
+  const lastWeek = goal.layers.find((l) => l.horizon === "week")?.items ?? [];
+
+  const prompt = `Goal: ${goal.title}${goal.detail ? `\nDetails: ${goal.detail}` : ""}
+This week's actions were:
+${lastWeek.map((i) => `- ${i}${doneTexts.includes(i) ? " (done)" : " (not done)"}`).join("\n") || "(none)"}
+${month ? `\nThis month's milestones:\n${month}` : ""}${quarter ? `\n\nThis quarter's milestones:\n${quarter}` : ""}
+
+Plan NEXT week. Build on what's done, carry over what wasn't if still relevant, and keep moving toward the month/quarter milestones.`;
+
+  const raw = await call(
+    'You roll a goal plan forward by one week. Return STRICT JSON only — no prose, no code fences — exactly: {"note": string, "items": string[]}. "items" = 3-6 concrete actions for next week, each starts with a verb, ≤ 8 words, no dates. "note" = one short sentence on the focus for next week. Write in the same language as the goal.',
+    prompt
+  );
+  let json = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  const a = json.indexOf("{");
+  const b = json.lastIndexOf("}");
+  if (a > 0 || b < json.length - 1) json = json.slice(a, b + 1);
+  let parsed: { note?: string; items?: string[] };
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error("Couldn't read next week — try again.");
+  }
+  const items = (parsed.items ?? []).filter((i) => typeof i === "string" && i.trim()).map((i) => i.trim());
+  if (items.length === 0) throw new Error("Next week came back empty — try again.");
+  return { items, note: typeof parsed.note === "string" ? parsed.note : "" };
 }
 
 export async function aiReview(

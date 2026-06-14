@@ -1,7 +1,8 @@
-import { Check, Trash2, ArrowRight, Target } from "lucide-react";
+import { Check, Trash2, Target } from "lucide-react";
 import type { Entry } from "../types";
 import { relativeDay } from "../lib/date";
 import { tagColor } from "../lib/tags";
+import { SwipeRow } from "./SwipeRow";
 
 interface Props {
   entry: Entry;
@@ -20,26 +21,29 @@ export function EntryItem({ entry, showDay, goal, onToggle, onEdit, onRemove, on
   const tc = entry.tag ? tagColor(entry.tag) : null;
 
   return (
+    <SwipeRow
+      bg="var(--bg-elevated)"
+      leftAction={{ icon: <Check size={20} strokeWidth={3} />, bg: "var(--done)" }}
+      onSwipeRight={() => onToggle(entry.id)}
+      rightAction={{ icon: <Trash2 size={20} />, bg: "#e5484d" }}
+      onSwipeLeft={() => onRemove(entry.id)}
+    >
     <div
       className="group flex items-center gap-3 px-4 py-3.5 transition-colors"
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "var(--bg-elevated)")}
     >
-      {/* Status circle */}
+      {/* Status circle — empty ring (planned) / filled check (done) */}
       <button
         onClick={() => onToggle(entry.id)}
         className="ring-focus tap grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border-2 transition-all"
         style={{
           background: done ? "var(--done)" : "transparent",
-          borderColor: done ? "var(--done)" : "var(--planned)",
+          borderColor: done ? "var(--done)" : "var(--border-strong)",
         }}
         aria-label={done ? "Mark as planned" : "Mark as done"}
       >
-        {done ? (
-          <Check size={13} strokeWidth={3} color="#fff" />
-        ) : (
-          <ArrowRight size={12} strokeWidth={2.5} color="var(--planned)" />
-        )}
+        {done && <Check size={13} strokeWidth={3} color="#fff" />}
       </button>
 
       {/* Text + meta — tap to edit */}
@@ -87,5 +91,6 @@ export function EntryItem({ entry, showDay, goal, onToggle, onEdit, onRemove, on
         <Trash2 size={15} />
       </button>
     </div>
+    </SwipeRow>
   );
 }

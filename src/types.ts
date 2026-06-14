@@ -30,6 +30,13 @@ export type GoalHorizon = "3-year" | "1-year" | "quarter" | "month" | "week";
 
 export type GoalPace = "chill" | "balanced" | "intense";
 
+export interface GoalMetric {
+  unit: string;
+  start: number;
+  current: number;
+  target: number;
+}
+
 export interface GoalLayer {
   horizon: GoalHorizon;
   label: string;
@@ -47,6 +54,8 @@ export interface Goal {
   auto?: boolean;
   /** How aggressive the plan should be. */
   pace?: GoalPace;
+  /** Optional numeric metric to track (e.g. weight 72→78 kg). */
+  metric?: GoalMetric;
   /** AI-generated, user-editable breakdown. */
   summary?: string;
   layers: GoalLayer[];

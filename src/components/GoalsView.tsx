@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus, X, Sparkles, RefreshCw, Trash2, Target, Check, ChevronRight } from "lucide-react";
 import type { Goal, GoalHorizon, GoalPace, Entry } from "../types";
-import { aiBreakdownGoal } from "../lib/ai";
+import { aiBreakdownGoal, aiNextWeek } from "../lib/ai";
 import { useScrollLock } from "../hooks/useScrollLock";
 import type { NewGoal } from "../hooks/useGoals";
 
@@ -190,6 +190,10 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
   const [detail, setDetail] = useState("");
   const [horizon, setHorizon] = useState<GoalHorizon>("1-year");
   const [auto, setAuto] = useState(true);
+  const [trackNum, setTrackNum] = useState(false);
+  const [unit, setUnit] = useState("");
+  const [current, setCurrent] = useState("");
+  const [target, setTarget] = useState("");
   const ref = useRef<HTMLInputElement>(null);
   useScrollLock(true);
   useEffect(() => {
@@ -197,7 +201,16 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
     return () => clearTimeout(t);
   }, []);
 
-  const submit = () => title.trim() && onSave({ title, detail, horizon, auto });
+  const submit = () => {
+    if (!title.trim()) return;
+    const c = parseFloat(current);
+    const t = parseFloat(target);
+    const metric =
+      trackNum && unit.trim() && !Number.isNaN(c) && !Number.isNaN(t)
+        ? { unit: unit.trim(), start: c, current: c, target: t }
+        : undefined;
+    onSave({ title, detail, horizon, auto, metric });
+  };
 
   return (
     <Overlay onClose={onClose}>
@@ -279,6 +292,25 @@ function GoalComposer({ onClose, onSave }: { onClose: () => void; onSave: (g: Ne
             ))}
           </div>
         </div>
+
+        {/* Optional numeric metric */}
+        <div>
+          <button
+            onClick={() => setTrackNum((v) => !v)}
+            className="ring-focus tap flex w-full items-center justify-between rounded-xl px-3 py-2.5"
+            style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+          >
+            <span className="text-[15px]">Track a number (optional)</span>
+            <span className="text-[13px] text-faint">{trackNum ? "On" : "Off"}</span>
+          </button>
+          {trackNum && (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <NumField label="Now" value={current} onChange={setCurrent} placeholder="72" />
+              <NumField label="Target" value={target} onChange={setTarget} placeholder="78" />
+              <NumField label="Unit" value={unit} onChange={setUnit} placeholder="kg" text />
+            </div>
+          )}
+        </div>
       </div>
     </Overlay>
   );
@@ -311,9 +343,38 @@ function GoalDetailSheet({
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<GoalHorizon | null>(null);
   const [confirm, setConfirm] = useState<null | "replan" | "delete">(null);
+  const [metricInput, setMetricInput] = useState(goal.metric ? String(goal.metric.current) : "");
+  const [nextWeekNote, setNextWeekNote] = useState<string | null>(null);
   const ranRef = useRef(false);
   useScrollLock(true);
   const pace = goal.pace ?? "balanced";
+
+  const planNextWeek = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const weekItems = goal.layers.find((l) => l.horizon === "week")?.items ?? [];
+      const doneWeek = weekItems.filter((i) => goal.done?.includes(i));
+      const r = await aiNextWeek(goal, doneWeek);
+      const newLayers = goal.layers.map((l) =>
+        l.horizon === "week" ? { ...l, items: r.items } : l
+      );
+      const stillPlanned = new Set(
+        goal.layers.filter((l) => l.horizon !== "week").flatMap((l) => l.items)
+      );
+      onUpdate(goal.id, {
+        layers: newLayers,
+        done: (goal.done ?? []).filter((d) => stillPlanned.has(d)),
+        added: [],
+      });
+      setNextWeekNote(r.note || "New week planned.");
+      setTimeout(() => setNextWeekNote(null), 4000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const layers = goal.layers;
   const activeHorizon =
@@ -356,6 +417,31 @@ function GoalDetailSheet({
   }, [autoRun]);
 
   const needsKey = error?.includes("API key");
+
+  const m = goal.metric;
+  const metricPct =
+    m && m.target !== m.start
+      ? Math.max(0, Math.min(100, Math.round(((m.current - m.start) / (m.target - m.start)) * 100)))
+      : 0;
+  const trajectory = (() => {
+    if (!m) return null;
+    const days: Record<GoalHorizon, number> = { week: 7, month: 30, quarter: 91, "1-year": 365, "3-year": 1095 };
+    const total = (days[goal.horizon] ?? 365) * 86400000;
+    const elapsed = Math.max(0, Math.min(1, (Date.now() - goal.createdAt) / total));
+    const diff = metricPct - Math.round(elapsed * 100);
+    if (Math.abs(diff) < 6) return { text: "On track", color: "var(--text-muted)" };
+    if (diff >= 6) return { text: `Ahead of pace (+${diff}%)`, color: "var(--done)" };
+    return { text: `Behind pace (${diff}%)`, color: "var(--planned)" };
+  })();
+  const logMetric = () => {
+    const v = parseFloat(metricInput);
+    if (!m || Number.isNaN(v)) return;
+    onUpdate(goal.id, { metric: { ...m, current: v } });
+  };
+  const weekLayer = layers.find((l) => l.horizon === "week");
+  const allWeekDone =
+    !!weekLayer && weekLayer.items.length > 0 && weekLayer.items.every((i) => goal.done?.includes(i));
+
   const PACES: { id: GoalPace; label: string }[] = [
     { id: "chill", label: "Chill" },
     { id: "balanced", label: "Balanced" },
@@ -412,6 +498,48 @@ function GoalDetailSheet({
           </div>
         ) : (
           <>
+            {/* Metric tracker */}
+            {m && (
+              <div
+                className="mb-4 rounded-2xl p-3"
+                style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+              >
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[16px] font-semibold">
+                    {m.current} → {m.target} {m.unit}
+                  </span>
+                  {trajectory && (
+                    <span className="text-[12px] font-medium" style={{ color: trajectory.color }}>
+                      {trajectory.text}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: "var(--bg-elevated)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${metricPct}%`, background: "var(--done)" }} />
+                  </div>
+                  <span className="text-[12px] tabular-nums text-faint">{metricPct}%</span>
+                </div>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <input
+                    value={metricInput}
+                    onChange={(e) => setMetricInput(e.target.value)}
+                    inputMode="decimal"
+                    placeholder={`Current ${m.unit}`}
+                    className="ring-focus h-9 flex-1 rounded-xl px-3 text-[14px] focus:outline-none"
+                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+                  />
+                  <button
+                    onClick={logMetric}
+                    className="ring-focus tap h-9 rounded-xl px-3.5 text-[13px] font-semibold text-[var(--accent-fg)]"
+                    style={{ background: "var(--accent)" }}
+                  >
+                    Log
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Pace control — replans with the chosen intensity */}
             <div className="mb-4 flex items-center gap-2">
               <span className="text-xs font-medium uppercase tracking-wider text-faint">Pace</span>
@@ -550,6 +678,26 @@ function GoalDetailSheet({
                 );
               })}
             </div>
+            {activeHorizon === "week" && (
+              <button
+                onClick={planNextWeek}
+                disabled={loading}
+                className="ring-focus tap mt-3 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl text-[14px] font-semibold"
+                style={
+                  allWeekDone
+                    ? { background: "var(--accent)", color: "var(--accent-fg)" }
+                    : { background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-muted)" }
+                }
+              >
+                {loading ? <RefreshCw size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                {allWeekDone ? "Week done — plan next week" : "Plan next week"}
+              </button>
+            )}
+            {nextWeekNote && (
+              <p className="mt-2 text-center text-[13px]" style={{ color: "var(--accent)" }}>
+                {nextWeekNote}
+              </p>
+            )}
           </>
         )}
       </div>
@@ -609,6 +757,34 @@ function GoalDetailSheet({
         </div>
       )}
     </Overlay>
+  );
+}
+
+function NumField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  text,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  text?: boolean;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] text-faint">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        inputMode={text ? undefined : "decimal"}
+        className="ring-focus rounded-xl px-3 py-2 text-[15px] focus:outline-none"
+        style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)" }}
+      />
+    </label>
   );
 }
 

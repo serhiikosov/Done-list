@@ -54,6 +54,8 @@ export function SwipeRow({
       }
     }
     if (dir.current !== "h") return;
+    // Keep this gesture on the row — don't let an outer page-swipe also react.
+    e.stopPropagation();
     dragged.current = true;
     // Clamp; ignore directions without an action.
     let next = ddx;

@@ -41,8 +41,15 @@ export default function App() {
   const { entries, all, add, update, remove, toggleStatus, replaceAll, mergeRemote } =
     useEntries();
   const { theme, toggle } = useTheme();
-  const sync = useSync(all, mergeRemote);
-  const { goals, add: addGoal, update: updateGoal, remove: removeGoal } = useGoals();
+  const {
+    goals,
+    all: allGoals,
+    add: addGoal,
+    update: updateGoal,
+    remove: removeGoal,
+    mergeRemote: mergeRemoteGoals,
+  } = useGoals();
+  const sync = useSync(all, mergeRemote, allGoals, mergeRemoteGoals);
 
   const [view, setView] = useState<View>("today");
   const [grouping, setGrouping] = useState<Grouping>("day");
@@ -85,6 +92,10 @@ export default function App() {
   };
 
   const goalProgress = (g: Goal) => {
+    if (g.metric && g.metric.target !== g.metric.start) {
+      const p = (g.metric.current - g.metric.start) / (g.metric.target - g.metric.start);
+      return Math.max(0, Math.min(100, Math.round(p * 100)));
+    }
     const items = g.layers.flatMap((l) => l.items);
     if (items.length === 0) return 0;
     const done = items.filter((i) => g.done?.includes(i)).length;

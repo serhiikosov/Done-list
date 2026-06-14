@@ -104,7 +104,7 @@ export function Sidebar(props: Props) {
         </span>
         <div className="leading-tight">
           <div className="text-sm font-semibold tracking-tight">Done</div>
-          <div className="text-[11px] text-faint">what you actually shipped</div>
+          <div className="text-[11px] text-faint">today → your goals</div>
         </div>
       </div>
 

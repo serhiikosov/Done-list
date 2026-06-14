@@ -20,6 +20,7 @@ export interface NewGoal {
   detail?: string;
   horizon: Goal["horizon"];
   auto?: boolean;
+  metric?: Goal["metric"];
 }
 
 export function useGoals() {
@@ -48,6 +49,7 @@ export function useGoals() {
       detail: input.detail?.trim() || undefined,
       horizon: input.horizon,
       auto: input.auto,
+      metric: input.metric,
       layers: [],
       createdAt: now,
       updatedAt: now,
@@ -66,5 +68,22 @@ export function useGoals() {
     setAll((prev) => prev.map((g) => (g.id === id ? { ...g, deleted: true, updatedAt: Date.now() } : g)));
   }, []);
 
-  return { goals, add, update, remove };
+  /** Merge remote goals in by id, newest updatedAt wins. */
+  const mergeRemote = useCallback((rows: Goal[]) => {
+    setAll((prev) => {
+      const byId = new Map(prev.map((g) => [g.id, g]));
+      let changed = false;
+      for (const r of rows) {
+        const local = byId.get(r.id);
+        if (!local || r.updatedAt > local.updatedAt) {
+          byId.set(r.id, r);
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+    });
+  }, []);
+
+  return { goals, all, add, update, remove, mergeRemote };
 }

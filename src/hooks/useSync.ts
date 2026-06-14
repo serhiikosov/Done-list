@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { Entry } from "../types";
+import type { Entry, Goal } from "../types";
 import {
   getConfig,
   setConfig,
@@ -9,6 +9,9 @@ import {
   pull,
   push,
   subscribeToChanges,
+  pullGoals,
+  pushGoals,
+  subscribeToGoalChanges,
   signIn as apiSignIn,
   signUp as apiSignUp,
   signOut as apiSignOut,
@@ -22,7 +25,12 @@ function msg(e: unknown): string {
   return String(e);
 }
 
-export function useSync(all: Entry[], mergeRemote: (rows: Entry[]) => void) {
+export function useSync(
+  all: Entry[],
+  mergeRemote: (rows: Entry[]) => void,
+  allGoals: Goal[],
+  mergeRemoteGoals: (rows: Goal[]) => void
+) {
   const [configured, setConfigured] = useState(() => !!getConfig());
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<SyncStatus>(configured ? "signedOut" : "disabled");
@@ -59,12 +67,14 @@ export function useSync(all: Entry[], mergeRemote: (rows: Entry[]) => void) {
     }
     let cancelled = false;
     let unsub = () => {};
+    let unsubGoals = () => {};
     (async () => {
       try {
         setStatus("syncing");
-        const rows = await pull();
+        const [rows, goalRows] = await Promise.all([pull(), pullGoals()]);
         if (cancelled) return;
         mergeRemote(rows);
+        mergeRemoteGoals(goalRows);
         setStatus("synced");
         setError(null);
       } catch (e) {
@@ -75,13 +85,15 @@ export function useSync(all: Entry[], mergeRemote: (rows: Entry[]) => void) {
       }
       if (!cancelled) {
         unsub = subscribeToChanges(userId, (entry) => mergeRemote([entry]));
+        unsubGoals = subscribeToGoalChanges(userId, (goal) => mergeRemoteGoals([goal]));
       }
     })();
     return () => {
       cancelled = true;
       unsub();
+      unsubGoals();
     };
-  }, [configured, userId, mergeRemote]);
+  }, [configured, userId, mergeRemote, mergeRemoteGoals]);
 
   // Debounced push of local state whenever it changes (while signed in).
   useEffect(() => {
@@ -89,7 +101,7 @@ export function useSync(all: Entry[], mergeRemote: (rows: Entry[]) => void) {
     clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(async () => {
       try {
-        await push(all, userId);
+        await Promise.all([push(all, userId), pushGoals(allGoals, userId)]);
         setStatus((s) => (s === "error" ? s : "synced"));
       } catch (e) {
         setStatus("error");
@@ -97,7 +109,7 @@ export function useSync(all: Entry[], mergeRemote: (rows: Entry[]) => void) {
       }
     }, 1000);
     return () => clearTimeout(pushTimer.current);
-  }, [all, configured, userId]);
+  }, [all, allGoals, configured, userId]);
 
   const configure = useCallback((cfg: SupabaseConfig | null) => {
     setConfig(cfg);
@@ -133,16 +145,17 @@ export function useSync(all: Entry[], mergeRemote: (rows: Entry[]) => void) {
     if (!userId) return;
     try {
       setStatus("syncing");
-      const rows = await pull();
+      const [rows, goalRows] = await Promise.all([pull(), pullGoals()]);
       mergeRemote(rows);
-      await push(all, userId);
+      mergeRemoteGoals(goalRows);
+      await Promise.all([push(all, userId), pushGoals(allGoals, userId)]);
       setStatus("synced");
       setError(null);
     } catch (e) {
       setStatus("error");
       setError(msg(e));
     }
-  }, [all, userId, mergeRemote]);
+  }, [all, allGoals, userId, mergeRemote, mergeRemoteGoals]);
 
   return {
     configured,
