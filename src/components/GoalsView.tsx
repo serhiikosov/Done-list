@@ -253,7 +253,6 @@ function GoalDetailSheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<GoalHorizon | null>(null);
-  const [added, setAdded] = useState<Record<string, boolean>>({});
   useScrollLock(true);
 
   const layers = goal.layers;
@@ -371,11 +370,11 @@ function GoalDetailSheet({
               style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
             >
               {activeLayer?.items.map((item, i) => {
-                const key = `${activeHorizon}-${i}`;
                 const isWeek = activeHorizon === "week";
+                const isAdded = goal.added?.includes(item) ?? false;
                 return (
                   <div
-                    key={key}
+                    key={`${activeHorizon}-${i}`}
                     className="flex items-start gap-3 px-4 py-3"
                     style={i > 0 ? { borderTop: "1px solid var(--border)" } : undefined}
                   >
@@ -387,17 +386,19 @@ function GoalDetailSheet({
                     {isWeek && (
                       <button
                         onClick={() => {
+                          if (isAdded) return;
                           onAddAction(goal, item);
-                          setAdded((a) => ({ ...a, [key]: true }));
+                          onUpdate(goal.id, { added: [...(goal.added ?? []), item] });
                         }}
+                        disabled={isAdded}
                         className="ring-focus tap inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium"
                         style={{
-                          background: added[key] ? "var(--done-soft)" : "var(--accent-soft)",
-                          color: added[key] ? "var(--done)" : "var(--accent)",
+                          background: isAdded ? "var(--done-soft)" : "var(--accent-soft)",
+                          color: isAdded ? "var(--done)" : "var(--accent)",
                         }}
                       >
-                        {added[key] ? <Check size={13} /> : <Plus size={13} />}
-                        {added[key] ? "Added" : "Today"}
+                        {isAdded ? <Check size={13} /> : <Plus size={13} />}
+                        {isAdded ? "Added" : "Today"}
                       </button>
                     )}
                   </div>

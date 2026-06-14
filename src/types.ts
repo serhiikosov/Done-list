@@ -44,6 +44,8 @@ export interface Goal {
   /** AI-generated, user-editable breakdown. */
   summary?: string;
   layers: GoalLayer[];
+  /** Weekly action texts already pushed to Today (so they aren't re-added). */
+  added?: string[];
   createdAt: number;
   updatedAt: number;
   deleted?: boolean;
