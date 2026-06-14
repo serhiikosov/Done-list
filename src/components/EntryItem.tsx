@@ -1,4 +1,4 @@
-import { Check, Trash2, ArrowRight } from "lucide-react";
+import { Check, Trash2, ArrowRight, Target } from "lucide-react";
 import type { Entry } from "../types";
 import { relativeDay } from "../lib/date";
 import { tagColor } from "../lib/tags";
@@ -7,13 +7,15 @@ interface Props {
   entry: Entry;
   /** Show the day on the right (used in week/month/year groupings). */
   showDay?: boolean;
+  /** The goal this entry came from, if any. */
+  goal?: { title: string; onOpen: () => void };
   onToggle: (id: string) => void;
   onEdit: (entry: Entry) => void;
   onRemove: (id: string) => void;
   onTagClick?: (tag: string) => void;
 }
 
-export function EntryItem({ entry, showDay, onToggle, onEdit, onRemove, onTagClick }: Props) {
+export function EntryItem({ entry, showDay, goal, onToggle, onEdit, onRemove, onTagClick }: Props) {
   const done = entry.status === "done";
   const tc = entry.tag ? tagColor(entry.tag) : null;
 
@@ -43,8 +45,21 @@ export function EntryItem({ entry, showDay, onToggle, onEdit, onRemove, onTagCli
       {/* Text + meta — tap to edit */}
       <button onClick={() => onEdit(entry)} className="ring-focus min-w-0 flex-1 text-left">
         <span className="block text-[17px] leading-snug">{entry.text}</span>
-        {(entry.tag || showDay) && (
+        {(entry.tag || showDay || goal) && (
           <span className="mt-1.5 flex flex-wrap items-center gap-2">
+            {goal && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goal.onOpen();
+                }}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium"
+                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+              >
+                <Target size={11} />
+                {goal.title}
+              </span>
+            )}
             {entry.tag && tc && (
               <span
                 onClick={(e) => {

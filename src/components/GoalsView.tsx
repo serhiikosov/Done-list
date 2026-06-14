@@ -9,6 +9,9 @@ import type { NewGoal } from "../hooks/useGoals";
 interface Props {
   goals: Goal[];
   entries: Entry[];
+  progressOf: (g: Goal) => number;
+  focusGoalId: string | null;
+  onFocusConsumed: () => void;
   onAdd: (g: NewGoal) => Goal;
   onUpdate: (id: string, patch: Partial<Goal>) => void;
   onRemove: (id: string) => void;
@@ -35,6 +38,9 @@ const HORIZON_OPTIONS: { id: GoalHorizon; label: string }[] = [
 export function GoalsView({
   goals,
   entries,
+  progressOf,
+  focusGoalId,
+  onFocusConsumed,
   onAdd,
   onUpdate,
   onRemove,
@@ -46,6 +52,15 @@ export function GoalsView({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [autoRunId, setAutoRunId] = useState<string | null>(null);
   const selected = goals.find((g) => g.id === selectedId) ?? null;
+
+  // Open a specific goal when navigated here from a Today entry chip.
+  useEffect(() => {
+    if (focusGoalId) {
+      setSelectedId(focusGoalId);
+      onFocusConsumed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusGoalId]);
 
   return (
     <div className="animate-in">
@@ -110,8 +125,22 @@ export function GoalsView({
                       ? `${week ? `${week.items.length} actions this week` : "Planned"} · ${HORIZON_OPTIONS.find((h) => h.id === g.horizon)?.label}`
                       : "Tap to plan with AI"}
                   </span>
+                  {g.layers.length > 0 && (
+                    <span className="mt-2 flex items-center gap-2">
+                      <span
+                        className="h-1.5 flex-1 overflow-hidden rounded-full"
+                        style={{ background: "var(--bg-subtle)" }}
+                      >
+                        <span
+                          className="block h-full rounded-full"
+                          style={{ width: `${progressOf(g)}%`, background: "var(--done)" }}
+                        />
+                      </span>
+                      <span className="text-[12px] tabular-nums text-faint">{progressOf(g)}%</span>
+                    </span>
+                  )}
                 </span>
-                <ChevronRight size={18} className="text-faint" />
+                <ChevronRight size={18} className="shrink-0 self-start text-faint" />
               </button>
             );
           })}

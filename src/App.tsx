@@ -69,7 +69,32 @@ export default function App() {
 
   const handleToggle = (id: string) => {
     haptic();
+    const e = entries.find((x) => x.id === id);
     toggleStatus(id);
+    // Close the loop: completing a goal-linked entry advances that goal.
+    if (e?.goalId) {
+      const willBeDone = e.status !== "done";
+      const g = goals.find((gg) => gg.id === e.goalId);
+      if (g) {
+        const has = g.done?.includes(e.text) ?? false;
+        if (willBeDone && !has) updateGoal(g.id, { done: [...(g.done ?? []), e.text] });
+        else if (!willBeDone && has)
+          updateGoal(g.id, { done: (g.done ?? []).filter((d) => d !== e.text) });
+      }
+    }
+  };
+
+  const goalProgress = (g: Goal) => {
+    const items = g.layers.flatMap((l) => l.items);
+    if (items.length === 0) return 0;
+    const done = items.filter((i) => g.done?.includes(i)).length;
+    return Math.round((done / items.length) * 100);
+  };
+  const goalsById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
+  const [focusGoalId, setFocusGoalId] = useState<string | null>(null);
+  const openGoal = (goalId: string) => {
+    setView("goals");
+    setFocusGoalId(goalId);
   };
 
   // ── Keyboard shortcuts ──────────────────────────────────────────
@@ -199,7 +224,15 @@ export default function App() {
   };
 
   const openAIReview = (label: string, doneItems: Entry[]) =>
-    setAiSheet({ title: `AI review · ${label}`, generate: () => aiReview(label, doneItems) });
+    setAiSheet({
+      title: `AI review · ${label}`,
+      generate: () =>
+        aiReview(
+          label,
+          doneItems,
+          goals.map((g) => ({ title: g.title, pct: goalProgress(g) }))
+        ),
+    });
 
   // ── Daily reminder (local; fires while the app is open) ─────────
   useEffect(() => {
@@ -364,6 +397,9 @@ export default function App() {
               <GoalsView
                 goals={goals}
                 entries={entries}
+                progressOf={goalProgress}
+                focusGoalId={focusGoalId}
+                onFocusConsumed={() => setFocusGoalId(null)}
                 onAdd={addGoal}
                 onUpdate={updateGoal}
                 onRemove={removeGoal}
@@ -394,6 +430,8 @@ export default function App() {
                   onRemove={handleRemove}
                   onTagClick={(t) => setActiveTag(t)}
                   onAIReview={openAIReview}
+                  goalTitleOf={(gid) => goalsById.get(gid)?.title}
+                  onOpenGoal={openGoal}
                 />
               </div>
             )}

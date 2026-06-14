@@ -23,6 +23,8 @@ interface Props {
   onRemove: (id: string) => void;
   onTagClick: (tag: string) => void;
   onAIReview: (label: string, doneItems: Entry[]) => void;
+  goalTitleOf?: (goalId: string) => string | undefined;
+  onOpenGoal?: (goalId: string) => void;
 }
 
 const GROUPS: { id: Grouping; label: string }[] = [
@@ -41,7 +43,15 @@ export function PeriodView({
   onRemove,
   onTagClick,
   onAIReview,
+  goalTitleOf,
+  onOpenGoal,
 }: Props) {
+  const entryGoal = (e: Entry) => {
+    if (!e.goalId) return undefined;
+    const title = goalTitleOf?.(e.goalId);
+    if (!title) return undefined;
+    return { title, onOpen: () => onOpenGoal?.(e.goalId!) };
+  };
   const [cursor, setCursor] = useState<Date>(() => new Date());
   const [dx, setDx] = useState(0);
   const [animating, setAnimating] = useState(false);
@@ -257,7 +267,7 @@ export function PeriodView({
                 <Card>
                   {dayItems.map((e, i) => (
                     <Row key={e.id} divider={i > 0}>
-                      <EntryItem entry={e} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onTagClick={onTagClick} />
+                      <EntryItem entry={e} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onTagClick={onTagClick} goal={entryGoal(e)} />
                     </Row>
                   ))}
                 </Card>
@@ -268,7 +278,7 @@ export function PeriodView({
           <Card>
             {items.map((e, i) => (
               <Row key={e.id} divider={i > 0}>
-                <EntryItem entry={e} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onTagClick={onTagClick} />
+                <EntryItem entry={e} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onTagClick={onTagClick} goal={entryGoal(e)} />
               </Row>
             ))}
           </Card>

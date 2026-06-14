@@ -231,11 +231,20 @@ Keep every item one short line. Be realistic and safe about pace.`;
   };
 }
 
-export async function aiReview(label: string, doneItems: Entry[]): Promise<string> {
+export async function aiReview(
+  label: string,
+  doneItems: Entry[],
+  goals: { title: string; pct: number }[] = []
+): Promise<string> {
   const list = doneItems.map(fmt).join("\n") || "(nothing yet)";
-  const prompt = `Period: ${label}\n\nEverything I shipped:\n${list}\n\nWrite a recap of what I accomplished.`;
+  const goalsBlock = goals.length
+    ? `\n\nMy active goals and current progress:\n${goals
+        .map((g) => `- ${g.title} — ${g.pct}%`)
+        .join("\n")}`
+    : "";
+  const prompt = `Period: ${label}\n\nEverything I shipped:\n${list}${goalsBlock}\n\nWrite my review.`;
   return call(
-    "You summarize a person's shipped work into a clear, organized recap suitable for a 1:1 or self-review. Group related items under short bold theme headers (use **Header** markdown and '- ' for bullets), be specific and concrete, and end with one short 'Overall impact' line. Start directly with the first header — no preamble or intro sentence.",
+    "You write a person's period review for a 1:1 or self-review. Group shipped work under short **bold** theme headers with '- ' bullets. If goals are provided, add a **Goals** section noting which goals this period's work moved forward and which were neglected, then a **Focus next** section with 2-3 concrete suggested actions for the next period that would most advance the goals. Be specific and concise. Start directly — no preamble.",
     prompt
   );
 }
