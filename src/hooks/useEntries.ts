@@ -84,7 +84,16 @@ export function useEntries() {
 
   const replaceAll = useCallback((next: Entry[]) => setAll(next), []);
 
-  /** Merge remote rows in by id, keeping whichever side was updated last. */
+  /** Apply a manual drag order: positions follow the given id sequence. */
+  const reorder = useCallback((orderedIds: string[]) => {
+    const pos = new Map(orderedIds.map((id, i) => [id, i]));
+    setAll((prev) =>
+      prev.map((e) => (pos.has(e.id) ? { ...e, order: pos.get(e.id) } : e))
+    );
+  }, []);
+
+  /** Merge remote rows in by id, keeping whichever side was updated last.
+   *  `order` is device-local (not in the synced schema), so keep ours. */
   const mergeRemote = useCallback((rows: Entry[]) => {
     setAll((prev) => {
       const byId = new Map(prev.map((e) => [e.id, e]));
@@ -92,7 +101,7 @@ export function useEntries() {
       for (const r of rows) {
         const local = byId.get(r.id);
         if (!local || r.updatedAt > local.updatedAt) {
-          byId.set(r.id, r);
+          byId.set(r.id, { ...r, order: local?.order });
           changed = true;
         }
       }
@@ -109,6 +118,7 @@ export function useEntries() {
     remove,
     toggleStatus,
     replaceAll,
+    reorder,
     mergeRemote,
   };
 }

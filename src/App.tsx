@@ -38,7 +38,7 @@ import { Composer } from "./components/Composer";
 import { BottomBar } from "./components/BottomBar";
 
 export default function App() {
-  const { entries, all, add, update, remove, toggleStatus, replaceAll, mergeRemote } =
+  const { entries, all, add, update, remove, toggleStatus, replaceAll, reorder, mergeRemote } =
     useEntries();
   const { theme, toggle } = useTheme();
   const {
@@ -453,6 +453,7 @@ export default function App() {
                   onOpenGoal={openGoal}
                   goals={goals}
                   onToggleGoalItem={toggleGoalItem}
+                  onReorder={reorder}
                 />
               </div>
             )}

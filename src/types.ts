@@ -14,6 +14,8 @@ export interface Entry {
   tag?: string;
   /** Links this entry to the goal action it came from (for toggle/sync). */
   goalId?: string;
+  /** Manual sort position within the day list (set by drag-to-reorder). */
+  order?: number;
   createdAt: number;
   updatedAt: number;
   /** Soft-delete tombstone so deletions propagate across synced devices. */

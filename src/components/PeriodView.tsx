@@ -13,6 +13,7 @@ import {
 } from "../lib/date";
 import { EntryItem } from "./EntryItem";
 import { GroupingMenu } from "./GroupingMenu";
+import { ReorderList } from "./ReorderList";
 
 interface Props {
   entries: Entry[];
@@ -27,6 +28,7 @@ interface Props {
   onOpenGoal?: (goalId: string) => void;
   goals?: Goal[];
   onToggleGoalItem?: (goalId: string, item: string) => void;
+  onReorder?: (orderedIds: string[]) => void;
 }
 
 const GROUPS: { id: Grouping; label: string }[] = [
@@ -49,6 +51,7 @@ export function PeriodView({
   onOpenGoal,
   goals,
   onToggleGoalItem,
+  onReorder,
 }: Props) {
   const entryGoal = (e: Entry) => {
     if (!e.goalId) return undefined;
@@ -75,12 +78,18 @@ export function PeriodView({
           return d >= start && d <= end;
         })
         .sort((a, b) => {
+          // Manual drag order wins in the day view.
+          if (grouping === "day") {
+            const ao = a.order ?? Infinity;
+            const bo = b.order ?? Infinity;
+            if (ao !== bo) return ao - bo;
+          }
           if (a.status !== b.status) return a.status === "planned" ? -1 : 1;
           if (a.date !== b.date) return b.date.localeCompare(a.date);
           return b.createdAt - a.createdAt;
         }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entries, start.getTime(), end.getTime()]
+    [entries, grouping, start.getTime(), end.getTime()]
   );
 
   const doneCount = items.filter((e) => e.status === "done").length;
@@ -367,11 +376,22 @@ export function PeriodView({
           </div>
         ) : (
           <Card>
-            {items.map((e, i) => (
-              <Row key={e.id} divider={i > 0}>
-                <EntryItem entry={e} onToggle={onToggle} onEdit={onEdit} onRemove={onRemove} onTagClick={onTagClick} goal={entryGoal(e)} />
-              </Row>
-            ))}
+            <ReorderList
+              rows={items.map((e) => ({
+                id: e.id,
+                node: (
+                  <EntryItem
+                    entry={e}
+                    onToggle={onToggle}
+                    onEdit={onEdit}
+                    onRemove={onRemove}
+                    onTagClick={onTagClick}
+                    goal={entryGoal(e)}
+                  />
+                ),
+              }))}
+              onReorder={(ids) => onReorder?.(ids)}
+            />
           </Card>
         )}
         </div>
